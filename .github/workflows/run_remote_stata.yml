@@ -1,0 +1,34 @@
+name: gha_rp_remote_stata
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-raw-stata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    container:
+      image: skranz/repbox_gha
+      options: --user root
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Stata license
+        shell: bash
+        run: |
+          mkdir -p /usr/local/stata
+          printf "%s" "${{ secrets.STATA_LIC }}" > /usr/local/stata/stata.lic
+
+      - name: Run minimal raw Stata reproduction
+        shell: bash
+        run: |
+          Rscript run_minimal_stata_repro.R
+
+      - name: Upload raw Stata bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gha-rp-results
+          path: gha_output
+          if-no-files-found: error
