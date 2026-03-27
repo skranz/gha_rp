@@ -1,12 +1,22 @@
-if (!require("remotes"))
-  install.packages("remotes")
-
 options(
   repos = c(CRAN = "https://cloud.r-project.org"),
   warn = 1
 )
 
 Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS = "true")
+
+for (nm in c(
+  "GITHUB_PAT",
+  "GITHUB_TOKEN",
+  "GH_TOKEN",
+  "GITHub_PAT",
+  "GITHUB_API_TOKEN"
+)) {
+  if (nzchar(Sys.getenv(nm, ""))) {
+    message("Unset ", nm, " so public GitHub installs use anonymous access.")
+    Sys.unsetenv(nm)
+  }
+}
 
 ensure_cran = function(pkgs) {
   pkgs = unique(pkgs)
@@ -35,7 +45,8 @@ install_from_candidates = function(pkg, repos, force = TRUE, dependencies = TRUE
         dependencies = dependencies,
         upgrade = "never",
         force = force,
-        build_vignettes = FALSE
+        build_vignettes = FALSE,
+        auth_token = NULL
       ),
       silent = TRUE
     )
@@ -59,103 +70,69 @@ install_from_candidates = function(pkg, repos, force = TRUE, dependencies = TRUE
   )
 }
 
-pkg_specs = list(
-  restorepoint = c("skranz/restorepoint"),
-  stringtools = c("skranz/stringtools"),
-  dbmisc = c("skranz/dbmisc"),
-  GithubActions = c("skranz/GithubActions"),
-
-  repboxEvaluate = c("repboxr/repboxEvaluate", "skranz/repboxEvaluate"),
-  repboxUtils = c("repboxr/repboxUtils", "skranz/repboxUtils"),
-  repboxDB = c("repboxr/repboxDB", "skranz/repboxDB"),
-  ExtractSciTab = c("repboxr/extractSciTab", "repboxr/ExtractSciTab", "skranz/ExtractSciTab"),
-  repboxRfun = c("repboxr/repboxRfun", "repboxr/repboxrfun", "skranz/repboxRfun"),
-
-  repboxCodeText = c("repboxr/repboxCodeText", "skranz/repboxCodeText"),
-  repboxArt = c("repboxr/repboxArt", "skranz/repboxArt"),
-  repboxDoc = c("repboxr/repboxDoc", "skranz/repboxDoc"),
-  repboxR = c("repboxr/repboxR", "skranz/repboxR"),
-  repboxStata = c("repboxr/repboxStata", "skranz/repboxStata"),
-  repboxReg = c("repboxr/repboxReg", "skranz/repboxReg"),
-  repboxStataReg = c("repboxr/repboxStataReg", "skranz/repboxStataReg"),
-  repboxRegmap = c("repboxr/repboxRegmap", "skranz/repboxRegmap"),
-  repboxDRF = c("repboxr/repboxDRF", "skranz/repboxDRF"),
-  metaregBase = c("skranz/metaregBase", "repboxr/metaregBase"),
-
-  repboxMap = c("repboxr/repboxMap", "skranz/repboxMap"),
-  repboxHtml = c("repboxr/repboxHtml", "skranz/repboxHtml"),
-  repboxEJD = c("repboxr/repboxEJD", "skranz/repboxEJD"),
-  repboxRun = c("repboxr/repboxRun", "skranz/repboxRun")
-)
-
-install_order = c(
+# Basic helpers
+install_from_candidates(
   "restorepoint",
-  "stringtools",
-  "dbmisc",
-  "GithubActions",
-  "repboxEvaluate",
-  "repboxUtils",
-  "repboxDB",
-  "ExtractSciTab",
-  "repboxRfun",
-  "repboxCodeText",
-  "repboxArt",
-  "repboxDoc",
-  "repboxR",
-  "repboxStata",
-  "repboxReg",
-  "repboxStataReg",
-  "repboxRegmap",
-  "repboxDRF",
-  "metaregBase",
-  "repboxMap",
-  "repboxHtml",
-  "repboxEJD",
-  "repboxRun"
+  c("skranz/restorepoint"),
+  force = TRUE,
+  dependencies = TRUE
 )
 
-install_repbox_stack = function(force = TRUE, max_rounds = 3) {
-  remaining = install_order
+install_from_candidates(
+  "stringtools",
+  c("skranz/stringtools"),
+  force = TRUE,
+  dependencies = TRUE
+)
 
-  for (round in seq_len(max_rounds)) {
-    message("\n=== install round ", round, " ===")
-    start_remaining = remaining
+install_from_candidates(
+  "dbmisc",
+  c("skranz/dbmisc"),
+  force = TRUE,
+  dependencies = TRUE
+)
 
-    for (pkg in start_remaining) {
-      ok = TRUE
+install_from_candidates(
+  "GithubActions",
+  c("skranz/GithubActions"),
+  force = TRUE,
+  dependencies = TRUE
+)
 
-      if (!force && requireNamespace(pkg, quietly = TRUE)) {
-        next
-      }
+# repbox core pieces
+install_from_candidates(
+  "repboxUtils",
+  c("repboxr/repboxUtils", "skranz/repboxUtils"),
+  force = TRUE,
+  dependencies = TRUE
+)
 
-      tryCatch(
-        install_from_candidates(pkg, pkg_specs[[pkg]], force = force, dependencies = TRUE),
-        error = function(e) {
-          ok <<- FALSE
-          message("Still not ready: ", pkg)
-          message(conditionMessage(e))
-        }
-      )
+install_from_candidates(
+  "repboxDB",
+  c("repboxr/repboxDB", "skranz/repboxDB"),
+  force = TRUE,
+  dependencies = TRUE
+)
 
-      if (ok && requireNamespace(pkg, quietly = TRUE)) {
-        remaining = setdiff(remaining, pkg)
-      }
-    }
+install_from_candidates(
+  "repboxStata",
+  c("repboxr/repboxStata", "skranz/repboxStata"),
+  force = TRUE,
+  dependencies = TRUE
+)
 
-    if (length(remaining) == 0) {
-      message("\nAll repbox Github packages installed.")
-      return(invisible(TRUE))
-    }
+install_from_candidates(
+  "repboxStataReg",
+  c("repboxr/repboxStataReg", "skranz/repboxStataReg"),
+  force = TRUE,
+  dependencies = TRUE
+)
 
-    if (identical(start_remaining, remaining)) {
-      break
-    }
-  }
+install_from_candidates(
+  "repboxRun",
+  c("repboxr/repboxRun", "skranz/repboxRun"),
+  force = TRUE,
+  dependencies = TRUE
+)
 
-  stop(
-    "Some packages could not be installed after ", max_rounds, " rounds: ",
-    paste(remaining, collapse = ", ")
-  )
-}
-
-install_repbox_stack(force = TRUE)
+message("\nSelected repbox Github packages installed.")
