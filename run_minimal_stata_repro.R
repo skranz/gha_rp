@@ -1,4 +1,7 @@
-source("install_repbox_pkgs.R", local=TRUE)
+#source("install_repbox_pkgs.R", local=TRUE)
+message = function(...) {
+  cat(paste0("\n", ..., "\n"))
+}
 
 cat("\nlibrary(repboxRun)\n")
 suppressWarnings(
@@ -9,7 +12,6 @@ cat("\nlibrary(repboxStata)\n")
 suppressWarnings(
   suppressPackageStartupMessages(library(repboxStata))
 )
-restore.point.options(display.restore.point=TRUE)
 
 options(warn = 1)
 cat('\nsource("run_config.R")\n')
@@ -37,6 +39,27 @@ input_dir = file.path(project_dir, "input")
 dir.create(input_dir, recursive = TRUE, showWarnings = FALSE)
 
 sup_zip = file.path(input_dir, basename(cfg$sup_url))
+
+message("HOME=", Sys.getenv("HOME"))
+message("path.expand('~')=", path.expand("~"))
+message("path.expand('~/ado/plus')=", path.expand("~/ado/plus"))
+
+ado_plus = Sys.getenv("REPBOX_ADO_PLUS", unset = "/root/ado/plus")
+message("Using ado plus dir: ", ado_plus)
+
+if (!dir.exists(ado_plus)) {
+  stop(
+    paste0(
+      "Configured ado plus dir does not exist: ", ado_plus,
+      ". HOME=", Sys.getenv("HOME"),
+      ", path.expand('~/ado/plus')=", path.expand("~/ado/plus")
+    )
+  )
+}
+
+repboxStata::set_stata_paths(
+  ado_dirs = c(plus = ado_plus)
+)
 
 message("Downloading supplement ZIP from ", cfg$sup_url)
 utils::download.file(
