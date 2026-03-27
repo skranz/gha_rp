@@ -9,6 +9,11 @@ rb_has_sup_zip = function(project_dir) {
 
 rb_get_sup_zip = function(project_dir) {
   artid = basename(project_dir)
+  if (!require(repboxEJD)) {
+    cat("\nCannot get sup_zip repboxEJD is not installed.")
+    return(NULL)
+  }
+
   repboxEJD::ejd_find_downloaded_sup_zip(artid=artid)
 }
 
