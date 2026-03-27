@@ -9,7 +9,7 @@ cat("\nlibrary(repboxStata)\n")
 suppressWarnings(
   suppressPackageStartupMessages(library(repboxStata))
 )
-
+restore.point.options(display.restore.point=TRUE)
 
 options(warn = 1)
 cat('\nsource("run_config.R")\n')
