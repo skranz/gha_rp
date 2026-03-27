@@ -45,8 +45,7 @@ install_from_candidates = function(pkg, repos, force = TRUE, dependencies = TRUE
         dependencies = dependencies,
         upgrade = "never",
         force = force,
-        build_vignettes = FALSE,
-        auth_token = NULL
+        build_vignettes = FALSE
       ),
       silent = TRUE
     )
@@ -70,34 +69,7 @@ install_from_candidates = function(pkg, repos, force = TRUE, dependencies = TRUE
   )
 }
 
-# Basic helpers
-install_from_candidates(
-  "restorepoint",
-  c("skranz/restorepoint"),
-  force = TRUE,
-  dependencies = TRUE
-)
 
-install_from_candidates(
-  "stringtools",
-  c("skranz/stringtools"),
-  force = TRUE,
-  dependencies = TRUE
-)
-
-install_from_candidates(
-  "dbmisc",
-  c("skranz/dbmisc"),
-  force = TRUE,
-  dependencies = TRUE
-)
-
-install_from_candidates(
-  "GithubActions",
-  c("skranz/GithubActions"),
-  force = TRUE,
-  dependencies = TRUE
-)
 
 # repbox core pieces
 install_from_candidates(
