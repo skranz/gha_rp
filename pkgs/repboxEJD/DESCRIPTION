@@ -1,0 +1,11 @@
+Package: repboxEJD
+Type: Package
+Title: repbox and EJD
+Version: 0.1.0
+Author: Sebastian Kranz
+Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
+Description: EJD, repbox and Github Actions
+License: Not yet licensed
+Depends: restorepoint, dplyr, GithubActions, dbmisc, repboxDB, repboxRun, repboxUtils
+Encoding: UTF-8
+LazyData: true
