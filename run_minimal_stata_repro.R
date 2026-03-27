@@ -1,6 +1,8 @@
 #source("install_repbox_pkgs.R", local=TRUE)
 
 library(repboxRun)
+library(repboxStata)
+
 options(warn = 1)
 
 source("run_config.R", local = TRUE)
