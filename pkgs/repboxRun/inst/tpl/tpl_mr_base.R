@@ -1,0 +1,19 @@
+# Performs 2nd reproduction run of Stata code with goal to extract
+# regression information
+#
+# 2nd run stores more systematically regression output and
+#     saves intermediate data sets so that later single regressions
+#     can be easier replicated / modified in a meta study
+
+run_mr_base = function(rb=NULL) {
+  library(repboxRun)
+  # Should point to this project dir
+  project_dir = rb_get_project_dir("{{default_project_dir}}")
+
+  if (FALSE)
+    rstudioapi::filesPaneNavigate(project_dir)
+
+  rb = rb_new(project_dir, just_steps=NULL, ignore_steps=NULL)
+  rb = rb_run_mr_base(rb, overwrite=FALSE)
+  rb
+}

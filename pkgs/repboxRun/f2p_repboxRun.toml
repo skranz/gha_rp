@@ -1,0 +1,113 @@
+opt_prompt_file = "my_prompt.Rmd"
+
+include_files = '''
+pipeline.md
+'''
+exclude_files = '''
+*.toml
+'''
+
+template = '''
+
+Below are relevant files from my R project.
+
+DESCRIPTION
+
+{{description}}
+
+# R code (project repboxRun)
+
+{{R}}
+
+# Github links to related packages that are loaded
+
+# General overview of repbox project
+https://github.com/repboxr
+
+# This package (Github link also includes some files not shown above)
+https://github.com/repboxr/repboxRun
+
+# Run Stata code and store log info
+https://github.com/repboxr/repboxStata
+
+# Static code analysis of Stata code
+https://github.com/repboxr/repboxCodeText
+
+# Rerun Stata code and store systematic regression results
+# in a a format for meta studies
+https://github.com/repboxr/repboxReg
+# Newer version in particular for meta studies some overlap with repboxReg
+https://github.com/repboxr/metaregTools
+
+# Analysis of reproduction packages that have R code (very preliminary)
+https://github.com/repboxr/repboxR
+
+
+https://github.com/repboxr/repboxReadme
+
+# Utility packages
+https://github.com/repboxr/repboxUtils
+https://github.com/repboxr/repboxDB
+
+
+# Making reports from repbox results
+https://github.com/repboxr/repboxHtml # old
+https://github.com/repboxr/repboxReport # new
+
+# Parsing information from article / appendix
+https://github.com/repboxr/repboxArt # old
+https://github.com/repboxr/repboxDoc # new
+
+# Mapping regressions between code and article
+https://github.com/repboxr/repboxMap # old
+
+https://github.com/repboxr/repboxAI # new AI approach
+https://github.com/repboxr/repboxRegmap # new complement to repboxAI
+
+# Tools to systematically deal with noisy information in form of tables
+# extracted from AI runs
+https://github.com/skranz/FuzzyProduction
+
+
+# There can be other packages under
+
+https://github.com/repboxr/
+
+or
+
+https://github.com/skranz/
+
+that are also used.
+
+##################################
+# Your Task
+##################################
+
+
+
+'''
+
+
+
+file_template = '''
+
+# FILE: {{filename}}
+```
+{{filetext}}
+```
+# END OF FILE: {{filename}}
+
+-----------------------------------------------------------
+'''
+
+[[R]]
+
+include_files = '''
+R/*.R
+'''
+
+[[description]]
+
+include_files = '''
+DESCRIPTION
+'''

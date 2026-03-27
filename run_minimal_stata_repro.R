@@ -1,10 +1,18 @@
-#source("install_repbox_pkgs.R", local=TRUE)
+source("install_repbox_pkgs.R", local=TRUE)
 
-library(repboxRun)
-library(repboxStata)
+cat("\nlibrary(repboxRun)\n")
+suppressWarnings(
+  suppressPackageStartupMessages(library(repboxRun))
+)
+
+cat("\nlibrary(repboxStata)\n")
+suppressWarnings(
+  suppressPackageStartupMessages(library(repboxStata))
+)
+
 
 options(warn = 1)
-
+cat('\nsource("run_config.R")\n')
 source("run_config.R", local = TRUE)
 
 if (!exists("gha_rp_run_config", inherits = FALSE)) {

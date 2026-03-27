@@ -1,0 +1,136 @@
+opt_prompt_file = "my_prompt.Rmd"
+
+include_files = '''
+pipeline.md
+'''
+exclude_files = '''
+*.toml
+'''
+
+template = '''
+
+Below are relevant files from R projects / directory related to repboxbox
+
+# Package repboxRun
+
+{{repboxRun}}
+
+# Package repboxGithub
+
+{{repboxGithub}}
+
+
+# Github repo where Github Actions are run
+
+{{gha_repo}}
+
+
+# Package GithubActions
+
+{{GithubActions}}
+
+
+# Test project (run file that shall trigger github actions)
+
+{{gha_test_project}}
+
+
+##################################
+# Your Task
+##################################
+
+I am currently revising the repbox pipeline.
+
+The rb* functions and files in repboxRun are the new pipeline.
+
+In the new pipeline I want to run the original Stata code with
+the injections that store the data in intermediate files in
+the /repbox/stata folder on GithubActions.
+
+Yet, all other steps (docs, creating drf folder, repdb packages etc),
+shall be done later locally. There debugging is easier.
+
+The main reproduction run shall still be on GithubActions as it is nicely
+containered and I thus reduce the risk for my own computer.
+
+The github repo shown above still uses the old pipeline, it
+did run much more steps on Github Actions.
+
+Please look at the code and propose how to best implement
+my minimal Github action run with the new pipeline.
+
+I also need local copy functions that put stuff for Github actions to load
+on my server (e.g. only the original supplement ZIP).
+
+Make first a proposal, explain the steps, the needed concrete implementations.
+Don't code anything yet.
+
+
+
+
+'''
+
+
+
+file_template = '''
+
+# FILE: {{filepath}}
+```
+{{filetext}}
+```
+# END OF FILE: {{filepath}}
+
+-----------------------------------------------------------
+'''
+
+
+[[repboxGithub]]
+
+include_files = '''
+/home/rstudio/repbox/repboxGithub/DESCRIPTION
+/home/rstudio/repbox/repboxGithub/R/*.R
+'''
+
+
+[[repboxRun]]
+
+include_files = '''
+/home/rstudio/repbox/repboxRun/DESCRIPTION
+/home/rstudio/repbox/repboxRun/R/*.R
+'''
+
+
+[[GithubActions]]
+
+include_files = '''
+/home/rstudio/repbox/GithubActions/DESCRIPTION
+/home/rstudio/repbox/GithubActions/R/*.R
+'''
+
+
+
+[[gha_repo]]
+
+include_files = '''
+/home/rstudio/repbox/gha/gha_rp/*.R
+/home/rstudio/repbox/gha/gha_repbox_ex4/.github/workflow/*.yml
+'''
+
+
+[[gha_test_project]]
+
+include_files = '''
+/home/rstudio/repbox/projects/gha_test/run/*.R
+'''
+
+
+
+[[gha_repo_old]]
+
+include_files = '''
+/home/rstudio/repbox/gha/gha_repbox_ex4/Dockerfile
+/home/rstudio/repbox/gha/gha_repbox_ex4/*.yml
+/home/rstudio/repbox/gha/gha_repbox_ex4/.github/workflow/*
+/home/rstudio/repbox/gha/gha_repbox_ex4/.github/scripts/*
+'''
+

@@ -1,0 +1,73 @@
+# Functions for 2nd reproduction run in Stata that extracts systematic
+# regression info and stores intermediate data sets for metareg replication
+
+# CURRENTLY WE TRY TO MAKE JUST A SINGLE REPRODUCTION RUN
+
+
+#
+# repbox_reg_repro_opts = function(store_data_caches = TRUE) {
+#   as.list(environment())
+# }
+#
+# rb_has_stata_reg_repro = function(rb, project_dir = rb$project_dir) {
+#   file.exists(file.path(project_dir, "repdb/stata_reg_run_info.Rds"))
+# }
+#
+# rb_has_stata_ok_reg = function(rb) {
+#   parcels = repdb_load_parcels(project_dir, "stata_run_info", parcels=rb$parcels)
+#   isTRUE(parcels$stata_run_info$stata_run_info$ok_reg_runs > 0)
+# }
+#
+#
+# rb_run_stata_reg_repro = function(rb, overwrite = FALSE, create_mod_dir = TRUE, opts=repbox_reg_repro_opts(), stata_opts = repbox_stata_opts()) {
+#   restore.point("rb_run_stata_reg_repro")
+#   rb_log_step_start(rb, "stata_reg_repro")
+#   project_dir = rb$project_dir
+#
+#   if (!rb_has_stata(rb)) {
+#     cat("The reproduction package has no Stata scripts.")
+#     return(rb)
+#   }
+#
+#   if (!overwrite) {
+#     if (rb_has_stata_reg_repro(rb)) {
+#       cat("\nStata regression reproduction already exists. Thus skipped.\n")
+#       return(rb)
+#     }
+#   }
+#   rb = rb_load_parcels(rb, "stata_run_info")
+#   if (!rb_has_stata_ok_reg(rb)) {
+#     cat("\nNo originally successfully reproduced Stata regression found.\n")
+#     return(rb)
+#   }
+#
+#   dap = get.project.dap(project_dir, make.if.missing = TRUE)
+#   if (is.null(dap)) return(rb)
+#
+#   if (create_mod_dir) {
+#     rb = rb_create_mod_dir(rb)
+#   }
+#
+#   rb_require_complete_mod_dir(rb)
+#
+#   if (opts$store_data_caches) {
+#     cache_dir = file.path(project_dir, "metareg/dap/stata/cache")
+#     if (!dir.exists(cache_dir)) dir.create(cache_dir,recursive = TRUE)
+#     store.data = dap.to.store.data(dap, cache_dir)
+#   } else {
+#     store.data = NULL
+#   }
+#
+#
+#   stata_opts$extract.reg.info = TRUE
+#   stata_opts$extract.scalar.vals = TRUE
+#   stata_opts$store.data = store.data
+#
+#
+#   rb$parcels = repbox_project_run_stata(project_dir,opts=stata_opts, parcels=rb$parcels)
+#   rb$parcels = repbox_save_stata_reg_run_parcels(project_dir, rb$parcels)
+#   res = dap_create_stata_scalar_info(project_dir = project_dir, dap=dap, scalar_df = rb$parcels$stata_scalar$stata_scalar)
+#   rb_log_step_end(rb, "stata_reg_repro")
+#
+#
+# }
