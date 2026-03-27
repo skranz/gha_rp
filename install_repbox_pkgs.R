@@ -5,19 +5,6 @@ options(
 
 Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS = "true")
 
-for (nm in c(
-  "GITHUB_PAT",
-  "GITHUB_TOKEN",
-  "GH_TOKEN",
-  "GITHub_PAT",
-  "GITHUB_API_TOKEN"
-)) {
-  if (nzchar(Sys.getenv(nm, ""))) {
-    message("Unset ", nm, " so public GitHub installs use anonymous access.")
-    Sys.unsetenv(nm)
-  }
-}
-
 ensure_cran = function(pkgs) {
   pkgs = unique(pkgs)
   missing = pkgs[!vapply(pkgs, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]
@@ -26,7 +13,7 @@ ensure_cran = function(pkgs) {
   invisible(TRUE)
 }
 
-ensure_cran(c("remotes"))
+ensure_cran("remotes")
 
 install_from_candidates = function(pkg, repos, force = TRUE, dependencies = TRUE) {
   if (!force && requireNamespace(pkg, quietly = TRUE)) {
@@ -35,6 +22,7 @@ install_from_candidates = function(pkg, repos, force = TRUE, dependencies = TRUE
   }
 
   last_error = NULL
+  token = Sys.getenv("GITHUB_PAT", "")
 
   for (repo in unique(repos)) {
     message("Installing ", pkg, " from ", repo, " ...")
@@ -42,6 +30,7 @@ install_from_candidates = function(pkg, repos, force = TRUE, dependencies = TRUE
     res = try(
       remotes::install_github(
         repo = repo,
+        auth_token = token,
         dependencies = dependencies,
         upgrade = "never",
         force = force,
@@ -68,7 +57,6 @@ install_from_candidates = function(pkg, repos, force = TRUE, dependencies = TRUE
     "Last error:\n", as.character(last_error)
   )
 }
-
 
 
 # repbox core pieces

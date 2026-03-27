@@ -23,6 +23,8 @@ jobs:
 
       - name: Run minimal raw Stata reproduction
         shell: bash
+        env:
+          GITHUB_PAT: ${{ github.token }}
         run: |
           Rscript run_minimal_stata_repro.R
 
