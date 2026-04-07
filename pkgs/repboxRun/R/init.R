@@ -135,7 +135,7 @@ remove_macosx_dirs = function(parent.dir) {
   dirs = list.dirs(parent.dir)
   mac.dirs = dirs[has.substr(dirs, "__MACOSX")]
   for (mac.dir in mac.dirs) {
-    remove.dir(mac.dir,recursive = TRUE)
+    remove.dir(mac.dir,recursive = TRUE,must.contain = "__MACOSX")
   }
 }
 

@@ -11,10 +11,11 @@ example = function() {
   suppressPackageStartupMessages(library(repboxRun))
   project_dir = "/home/rstudio/repbox/projects/gha_test"
   project_dir = "~/repbox/projects/aejapp_11_2_10"
+  browse=TRUE
   rb_run_gha_stata_reproduction(project_dir)
 }
 
-rb_run_gha_stata_reproduction = function(project_dir) {
+rb_run_gha_stata_reproduction = function(project_dir,  browse=TRUE) {
   restore.point("rb_run_gha_stata_reproduction")
 
   project_dir = normalizePath(project_dir)
@@ -112,8 +113,10 @@ rb_run_gha_stata_reproduction = function(project_dir) {
   old_runid = runid = GithubActions::gh_newest_runid(github_repo)
 
   cat("\nStart GHA workflow\n")
-  cat("\nSee\nhttps://github.com/skranz/gha_rp/actions\n")
 
+  cat("\nSee\nhttps://github.com/skranz/gha_rp/actions\n")
+  if (browse)
+    browseURL("https://github.com/skranz/gha_rp/actions")
 
   res = GithubActions::gh_run_workflow(github_repo)
 
