@@ -11,12 +11,28 @@ example = function() {
   suppressPackageStartupMessages(library(repboxRun))
   project_dir = "/home/rstudio/repbox/projects/gha_test"
   project_dir = "~/repbox/projects/aejapp_11_2_10"
-  browse=TRUE
-  rb_run_gha_stata_reproduction(project_dir)
+  rb_run_gha_stata_reproduction(project_dir, overwrite=TRUE)
+  browseURL("https://github.com/skranz/gha_rp/actions")
+  rstudioapi::filesPaneNavigate(project_dir)
+
 }
 
-rb_run_gha_stata_reproduction = function(project_dir,  browse=TRUE) {
+rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrite=FALSE) {
   restore.point("rb_run_gha_stata_reproduction")
+
+  if (!overwrite && rb_has_stata_raw_reproduction(project_dir=project_dir) & (!postprocess | rb_has_stata_postprocess(project_dir=project_dir))) {
+    cat("\nRaw Stata reproduction already exists. Thus skipped.")
+    return()
+  }
+
+
+  log_dir = file.path(project_dir, "gha_log")
+  if (!dir.exists(log_dir)) dir.create(log_dir)
+  log_files = list.files(log_dir, glob2rx("*.log"),full.names = TRUE)
+  if (length(log_files)>0)
+    file.remove(log_files)
+
+  writeLines(as.character(Sys.time(), file.path(log_dir, "gha_start.log")))
 
   project_dir = normalizePath(project_dir)
 
@@ -115,8 +131,6 @@ rb_run_gha_stata_reproduction = function(project_dir,  browse=TRUE) {
   cat("\nStart GHA workflow\n")
 
   cat("\nSee\nhttps://github.com/skranz/gha_rp/actions\n")
-  if (browse)
-    browseURL("https://github.com/skranz/gha_rp/actions")
 
   res = GithubActions::gh_run_workflow(github_repo)
 
@@ -139,10 +153,18 @@ rb_run_gha_stata_reproduction = function(project_dir,  browse=TRUE) {
   cat("\nWait until workflow is completed...\n")
 
   cat("\nArtifact:\n")
-  print(GithubActions::gh_list_artifacts(
+  arti = GithubActions::gh_list_artifacts(
     repo = github_repo,
     runid = runid
-  ))
+  )
+  print(arti)
+  if (NROW(arti)==0) {
+    gha_log = as.character(try(GithubActions::gh_run_log(repodir = github_repo, runid=runid)))
+    log = paste0(as.character(Sys.time()),"\n", gha_log)
+    writeLines(log, file.path(log_dir, "gha_no_artifact.log"))
+    cat("\nNo artifact found / created. Likely an error in the Github action run. See \n", file.path(log_dir, "gha_no_artifact.log"))
+    return()
+  }
 
 
   cat("\nCopy and extract raw results to local project directory.\n")
@@ -159,6 +181,9 @@ rb_run_gha_stata_reproduction = function(project_dir,  browse=TRUE) {
   # ------------------------------------------------------------
   # 6. Local postprocess after the remote raw run
   # ------------------------------------------------------------
+
+
+  writeLines(as.character(Sys.time()), file.path(log_dir, "gha_ok.log"))
 
   # Now do the easy-to-debug local steps.
 
@@ -192,6 +217,7 @@ rb_run_gha_stata_reproduction = function(project_dir,  browse=TRUE) {
   cat("\nDone with stata reproduction for ", project_dir,"\n")
 
   cat(paste0("\nrstudioapi::filesPaneNavigate('",project_dir,"')\n"))
+  writeLines(as.character(Sys.time()), file.path(log_dir, "gha_postprocess_ok.log"))
 
 }
 
