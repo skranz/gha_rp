@@ -32,7 +32,7 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrit
   if (length(log_files)>0)
     file.remove(log_files)
 
-  writeLines(as.character(Sys.time(), file.path(log_dir, "gha_start.log")))
+  writeLines(as.character(Sys.time()), file.path(log_dir, "gha_start.log"))
 
   project_dir = normalizePath(project_dir)
 
@@ -157,11 +157,13 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrit
     repo = github_repo,
     runid = runid
   )
+  gha_log = as.character(try(GithubActions::gh_run_log(repodir = github_repo, runid=runid)))
+  log = paste0(as.character(Sys.time()),"\n", gha_log)
+  writeLines(log, file.path(log_dir, "gha_log.log"))
+
   print(arti)
   if (NROW(arti)==0) {
-    gha_log = as.character(try(GithubActions::gh_run_log(repodir = github_repo, runid=runid)))
-    log = paste0(as.character(Sys.time()),"\n", gha_log)
-    writeLines(log, file.path(log_dir, "gha_no_artifact.log"))
+    writeLines(as.character(Sys.time()), file.path(log_dir, "gha_no_artificat.log"))
     cat("\nNo artifact found / created. Likely an error in the Github action run. See \n", file.path(log_dir, "gha_no_artifact.log"))
     return()
   }
