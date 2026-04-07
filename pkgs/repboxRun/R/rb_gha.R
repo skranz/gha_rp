@@ -8,16 +8,20 @@
 # gha_rp_stage_sup_zip() creates a ZIP from /org automatically.
 
 example = function() {
-  library(repboxRun)
+  suppressPackageStartupMessages(library(repboxRun))
   project_dir = "/home/rstudio/repbox/projects/gha_test"
+  project_dir = "~/repbox/projects/aejapp_11_2_10"
   rb_run_gha_stata_reproduction(project_dir)
 }
 
 rb_run_gha_stata_reproduction = function(project_dir) {
   restore.point("rb_run_gha_stata_reproduction")
 
-  library(repboxGithub)
-  library(repboxRun)
+  project_dir = normalizePath(project_dir)
+
+
+  suppressPackageStartupMessages(library(repboxGithub))
+  suppressPackageStartupMessages(library(repboxRun))
 
   # ------------------------------------------------------------
   # 1. Example paths and repo names
@@ -107,8 +111,13 @@ rb_run_gha_stata_reproduction = function(project_dir) {
 
   old_runid = runid = GithubActions::gh_newest_runid(github_repo)
 
+  cat("\nStart GHA workflow\n")
+  cat("\nSee\nhttps://github.com/skranz/gha_rp/actions\n")
+
+
   res = GithubActions::gh_run_workflow(github_repo)
 
+  cat("\nWait until workflow actually starts\n")
   runid = GithubActions::gh_wait_until_new_run_starts(
     repo = github_repo,
     old_runid = old_runid,
@@ -116,6 +125,7 @@ rb_run_gha_stata_reproduction = function(project_dir) {
     timeout = 20
   )
 
+  cat("\nWait until workflow run completes...\n")
   run_info = GithubActions::gh_wait_until_run_completed(
     repo = github_repo,
     runid = runid,
@@ -123,12 +133,16 @@ rb_run_gha_stata_reproduction = function(project_dir) {
     timeout = 6 * 60 * 60
   )
 
-  GithubActions::gh_list_artifacts(
+  cat("\nWait until workflow is completed...\n")
+
+  cat("\nArtifact:\n")
+  print(GithubActions::gh_list_artifacts(
     repo = github_repo,
     runid = runid
-  )
+  ))
 
 
+  cat("\nCopy and extract raw results to local project directory.\n")
   gha_rp_download_stata_raw_results(
     repo = github_repo,
     project_dir = project_dir,
@@ -137,7 +151,7 @@ rb_run_gha_stata_reproduction = function(project_dir) {
     local_input_zip = NULL
   )
 
-  cat("\nRaw Github Actions bundle imported into the local project.\n")
+  cat("\nPerform local post-processing of Stata reproduction.\n")
 
   # ------------------------------------------------------------
   # 6. Local postprocess after the remote raw run
@@ -172,6 +186,9 @@ rb_run_gha_stata_reproduction = function(project_dir) {
     build_reg_info = TRUE,
     build_drf = TRUE
   )
+  cat("\nDone with stata reproduction for ", project_dir,"\n")
+
+  cat(paste0("\nrstudioapi::filesPaneNavigate('",project_dir,"')\n"))
 
 }
 
