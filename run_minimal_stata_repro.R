@@ -1,6 +1,26 @@
-source("install_repbox_pkgs.R", local=TRUE)
+source("install_repbox_pkgs.R", local = TRUE)
+
 message = function(...) {
   cat(paste0("\n", ..., "\n"))
+}
+
+resolve_stata_bin = function(candidates) {
+  candidates = unique(candidates[nzchar(candidates)])
+  if (length(candidates) == 0) return(NULL)
+
+  for (candidate in candidates) {
+    if (startsWith(candidate, "/")) {
+      if (file.exists(candidate)) {
+        return(normalizePath(candidate, mustWork = TRUE))
+      }
+    } else {
+      resolved = Sys.which(candidate)
+      if (nzchar(resolved)) {
+        return(unname(resolved))
+      }
+    }
+  }
+  NULL
 }
 
 cat("\nlibrary(repboxRun)\n")
@@ -14,6 +34,7 @@ suppressWarnings(
 )
 
 options(warn = 1)
+
 cat('\nsource("run_config.R")\n')
 source("run_config.R", local = TRUE)
 
@@ -57,9 +78,32 @@ if (!dir.exists(ado_plus)) {
   )
 }
 
+stata_bin = resolve_stata_bin(c(
+  Sys.getenv("REPBOX_STATA_BIN", unset = ""),
+  "stata-se",
+  "stata-mp",
+  "stata",
+  "/usr/local/stata/stata-se",
+  "/usr/local/stata/stata-mp"
+))
+
+if (is.null(stata_bin)) {
+  stop(
+    paste0(
+      "Could not find a Stata binary. Set REPBOX_STATA_BIN to the executable ",
+      "available in the container, or make sure stata-se/stata-mp is on PATH."
+    )
+  )
+}
+
+message("Using Stata binary: ", stata_bin)
+
 repboxStata::set_stata_paths(
+  stata_bin = stata_bin,
   ado_dirs = c(plus = ado_plus)
 )
+
+repboxStata::check_stata_paths_and_ado(on_fail = "error")
 
 message("Downloading supplement ZIP from ", cfg$sup_url)
 utils::download.file(
