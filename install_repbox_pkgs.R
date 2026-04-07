@@ -4,7 +4,7 @@ inst = function(pkg, force=TRUE) {
   suppressPackageStartupMessages(remotes::install_local(pkg, force=force))
 
 }
-inst("pkgs/repboxStata", force=force)
-inst("pkgs/repboxRun",force=force)
+inst("pkgs/repboxStata")
+inst("pkgs/repboxRun")
 
 cat("\nDone local package installation.\n")
