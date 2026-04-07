@@ -1,4 +1,5 @@
 cat("\nInstall local R packages\n")
+install.packages("remotes")
 #remotes::install_local("pkgs/GithubActions")
 remotes::install_local("pkgs/repboxStata", force=TRUE)
 remotes::install_local("pkgs/repboxRun",force=TRUE)
