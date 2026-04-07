@@ -1,7 +1,10 @@
 cat("\nInstall local R packages\n")
 install.packages("remotes")
-#remotes::install_local("pkgs/GithubActions")
-remotes::install_local("pkgs/repboxStata", force=TRUE)
-remotes::install_local("pkgs/repboxRun",force=TRUE)
+inst = function(pkg, force=TRUE) {
+  suppressPackageStartupMessages(remotes::install_local(pkg, force=force))
+
+}
+inst("pkgs/repboxStata", force=force)
+inst("pkgs/repboxRun",force=force)
 
 cat("\nDone local package installation.\n")

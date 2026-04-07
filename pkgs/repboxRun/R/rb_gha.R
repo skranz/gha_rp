@@ -19,7 +19,7 @@ example = function() {
 
 rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrite=FALSE) {
   restore.point("rb_run_gha_stata_reproduction")
-
+  #stop()
   if (!overwrite && rb_has_stata_raw_reproduction(project_dir=project_dir) & (!postprocess | rb_has_stata_postprocess(project_dir=project_dir))) {
     cat("\nRaw Stata reproduction already exists. Thus skipped.")
     return()
@@ -97,6 +97,7 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrit
     output_dir = "gha_output/bundle",
     artifact_name = "gha-rp-results"
   )
+  saveRDS(prep, file.path(log_dir, "gha_run_settings.Rds"))
 
   cat("\nPrepared Github Actions input.\n")
   print(prep$staged_sup)
@@ -104,8 +105,9 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrit
 
   # 2b copy local r packages
 
+
   repboxGithub::copy_r_package("/home/rstudio/repbox/repboxRun",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite = TRUE)
-  #repboxGithub::copy_r_package("/home/rstudio/repbox/repboxEJD",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs")
+  repboxGithub::copy_r_package("/home/rstudio/repbox/repboxStata",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite=TRUE)
   #repboxGithub::copy_r_package("/home/rstudio/repbox/GithubActions",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs")
   # ------------------------------------------------------------
   # 3. Commit and push the updated gha_rp/run_config.R
@@ -157,8 +159,18 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrit
     repo = github_repo,
     runid = runid
   )
-  gha_log = as.character(try(GithubActions::gh_run_log(repodir = github_repo, runid=runid)))
-  log = paste0(as.character(Sys.time()),"\n", gha_log)
+  gha_log = as.character(try(GithubActions::gh_run_log(repodir = gha_repo_dir, runid=runid)))
+  gha_log = str.right.of(gha_log, "Z ")
+  row = which(startsWith(gha_log, "GHA: Start Reproduction"))
+  if (length(row)>0) {
+    gha_log = gha_log[row[1]:NROW(gha_log)]
+  }
+  row = which(startsWith(gha_log, "GHA: End Reproduction"))
+  if (length(row)>0) {
+    gha_log = gha_log[1:row[1]]
+  }
+
+  log = paste0(as.character(Sys.time()),"\n", paste0(gha_log, collapse="\n"))
   writeLines(log, file.path(log_dir, "gha_log.log"))
 
   print(arti)

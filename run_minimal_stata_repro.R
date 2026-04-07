@@ -1,3 +1,5 @@
+cat("\nGHA: Start Reproduction\n")
+
 source("install_repbox_pkgs.R", local = TRUE)
 
 message = function(...) {
@@ -179,3 +181,5 @@ writeLines(
 )
 
 message("Finished. Output bundle is in ", cfg$output_dir)
+
+cat("\nGHA: End Reproduction\n")
