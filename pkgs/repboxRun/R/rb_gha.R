@@ -1,3 +1,181 @@
+# Example end-to-end test script for the minimal Github Actions
+# Stata reproduction in /home/rstudio/repbox/gha/gha_rp.
+#
+# Adapt all paths and repo names to your setup.
+#
+# This script also works if the project has no original supplement ZIP
+# anymore, but still has a complete /org folder. In that case
+# gha_rp_stage_sup_zip() creates a ZIP from /org automatically.
+
+example = function() {
+  library(repboxRun)
+  project_dir = "/home/rstudio/repbox/projects/gha_test"
+  rb_run_gha_stata_reproduction(project_dir)
+}
+
+rb_run_gha_stata_reproduction = function(project_dir) {
+  restore.point("rb_run_gha_stata_reproduction")
+
+  library(repboxGithub)
+  library(repboxRun)
+
+  # ------------------------------------------------------------
+  # 1. Example paths and repo names
+  # ------------------------------------------------------------
+
+  # Local repbox project.
+  # Example 1: project has an original supplement ZIP somewhere that
+  # rb_get_sup_zip(project_dir) can find.
+  #
+  # Example 2: project only has /org and no ZIP. Then the helper
+  # automatically creates meta/<artid>_org.zip from /org.
+
+  artid = basename(project_dir)
+
+  # Local checkout of the Github Actions repo.
+
+
+  if (FALSE)
+    rstudioapi::filesPaneNavigate(gha_repo_dir)
+
+  gha_repo_dir = "/home/rstudio/repbox/gha/gha_rp"
+
+  # Github repo slug used by git and gh.
+  github_repo = "skranz/gha_rp"
+
+  # Workflow file in the gha_rp repo.
+  workflow_file = "run_remote_stata.yml"
+
+  # Directory on your server where the supplement ZIP should be copied.
+  server_dir = "/home/rstudio/web/repbox_temp"
+
+  # Public base URL that maps to server_dir.
+  url_base = "http://klein.mathematik.uni-ulm.de/repbox_temp"
+
+  # ------------------------------------------------------------
+  # 2. Stage the supplement ZIP and refresh gha_rp/run_config.R
+  # ------------------------------------------------------------
+
+  # If you want to force using a specific ZIP file, set sup_zip explicitly.
+  # Otherwise keep sup_zip = NULL.
+  sup_zip = NULL
+
+  prep = gha_rp_prepare_repo(
+    project_dir = project_dir,
+    server_dir = server_dir,
+    url_base = url_base,
+    repo_dir = gha_repo_dir,
+    sup_zip = sup_zip,
+    overwrite = TRUE,
+    timeout = 10 * 60,
+    create_mod_dir = TRUE,
+    capture_reg_info = TRUE,
+    capture_scalar_info = TRUE,
+    stop.on.error = TRUE,
+    work_dir = "gha_work",
+    output_dir = "gha_output/bundle",
+    artifact_name = "gha-rp-results"
+  )
+
+  cat("\nPrepared Github Actions input.\n")
+  print(prep$staged_sup)
+  print(prep$run_config)
+
+  # 2b copy local r packages
+
+  repboxGithub::copy_r_package("/home/rstudio/repbox/repboxRun",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite = TRUE)
+  #repboxGithub::copy_r_package("/home/rstudio/repbox/repboxEJD",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs")
+  #repboxGithub::copy_r_package("/home/rstudio/repbox/GithubActions",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs")
+  # ------------------------------------------------------------
+  # 3. Commit and push the updated gha_rp/run_config.R
+  # ------------------------------------------------------------
+
+  library(GithubActions)
+
+  GithubActions::gh_set_pat(readLines("/home/rstudio/repbox/pat.txt"))
+  GithubActions::gh_auth_status()
+
+  # The workflow reads run_config.R from the Github repo, so the changed
+  # config must be committed and pushed before triggering the run.
+
+
+  GithubActions::gh_update(gha_repo_dir,msg = paste0("Update to ", artid))
+
+  # ------------------------------------------------------------
+  # 4. Trigger the Github Actions workflow
+  # ------------------------------------------------------------
+
+  old_runid = runid = GithubActions::gh_newest_runid(github_repo)
+
+  res = GithubActions::gh_run_workflow(github_repo)
+
+  runid = GithubActions::gh_wait_until_new_run_starts(
+    repo = github_repo,
+    old_runid = old_runid,
+    pause.sec = 3,
+    timeout = 20
+  )
+
+  run_info = GithubActions::gh_wait_until_run_completed(
+    repo = github_repo,
+    runid = runid,
+    pause.sec = 10,
+    timeout = 6 * 60 * 60
+  )
+
+  GithubActions::gh_list_artifacts(
+    repo = github_repo,
+    runid = runid
+  )
+
+
+  gha_rp_download_stata_raw_results(
+    repo = github_repo,
+    project_dir = project_dir,
+    overwrite = TRUE,
+    verify = TRUE,
+    local_input_zip = NULL
+  )
+
+  cat("\nRaw Github Actions bundle imported into the local project.\n")
+
+  # ------------------------------------------------------------
+  # 6. Local postprocess after the remote raw run
+  # ------------------------------------------------------------
+
+  # Now do the easy-to-debug local steps.
+
+  rb = repboxRun:::rb_new(
+    project_dir = project_dir,
+    copy_existing = FALSE,
+    fail_action = "error"
+  )
+
+  # Make sure the file and script parcels exist locally.
+  rb = repboxRun:::rb_update_file_info_parcel(
+    rb = rb,
+    overwrite = FALSE,
+    assume_org_complete = TRUE
+  )
+
+  rb = repboxRun:::rb_update_script_parcels(
+    rb = rb,
+    overwrite = FALSE
+  )
+
+  # Turn the raw Stata outputs into local derivatives.
+  rb = repboxRun:::rb_postprocess_stata_reproduction(
+    rb = rb,
+    overwrite = TRUE,
+    build_run_info = TRUE,
+    build_do_run_info = TRUE,
+    build_reg_info = TRUE,
+    build_drf = TRUE
+  )
+
+}
+
+
 rb_make_stata_run_manifest = function(project_dir, input_zip = NULL, extra = list()) {
   restore.point("rb_make_stata_run_manifest")
 
