@@ -74,7 +74,24 @@ rb_read_stata_run_manifest = function(
 rb_copy_tree = function(from, to, overwrite = TRUE) {
   restore.point("rb_copy_tree")
 
-  if (!file.exists(from)) return(FALSE)
+  if (!file.exists(from) && !dir.exists(from)) return(FALSE)
+
+  if (dir.exists(from)) {
+    if ((file.exists(to) || dir.exists(to)) && overwrite) {
+      unlink(to, recursive = TRUE, force = TRUE)
+    }
+    if ((file.exists(to) || dir.exists(to)) && !overwrite) {
+      return(TRUE)
+    }
+
+    dir.create(to, recursive = TRUE, showWarnings = FALSE)
+    rb_copy_dir_contents(
+      from_dir = from,
+      to_dir = to,
+      overwrite = overwrite
+    )
+    return(TRUE)
+  }
 
   if ((file.exists(to) || dir.exists(to)) && overwrite) {
     unlink(to, recursive = TRUE, force = TRUE)
@@ -87,13 +104,13 @@ rb_copy_tree = function(from, to, overwrite = TRUE) {
   ok = file.copy(
     from = from,
     to = to,
-    recursive = TRUE,
+    recursive = FALSE,
     copy.mode = TRUE,
     copy.date = TRUE,
     overwrite = overwrite
   )
 
-  if (!all(ok)) {
+  if (!isTRUE(ok)) {
     stop(paste0("Could not copy ", from, " to ", to, "."))
   }
   TRUE
