@@ -160,7 +160,7 @@ rb_postprocess_stata_reproduction = function(
 ) {
   restore.point("rb_postprocess_stata_reproduction")
   library(repboxStata)
-  library(repboxStataReg)
+  suppressWarnings(suppressPackageStartupMessages(library(repboxStataReg)))
 
   project_dir = rb$project_dir
   if (is.null(project_dir)) stop("No project_dir")
@@ -191,7 +191,7 @@ rb_postprocess_stata_reproduction = function(
   }
 
   if (build_reg_info) {
-    library(repboxStataReg)
+    suppressWarnings(suppressPackageStartupMessages(library(repboxStataReg)))
     parcels = rsr_make_reg_info(
       project_dir = project_dir,
       overwrite = overwrite,

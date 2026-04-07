@@ -25,15 +25,20 @@ resolve_stata_bin = function(candidates) {
   NULL
 }
 
+
+suppressWarnings(suppressPackageStartupMessages(require(repboxR)))
+
+suppressWarnings(suppressPackageStartupMessages(library(collapse)))
+suppressWarnings(suppressPackageStartupMessages(library(stata2r)))
+suppressWarnings(suppressPackageStartupMessages(library(repboxStataReg)))
+suppressWarnings(suppressPackageStartupMessages(library(repboxDRF)))
+
+
 cat("\nlibrary(repboxRun)\n")
-suppressWarnings(
-  suppressPackageStartupMessages(library(repboxRun))
-)
+suppressWarnings(suppressPackageStartupMessages(library(repboxRun)))
 
 cat("\nlibrary(repboxStata)\n")
-suppressWarnings(
-  suppressPackageStartupMessages(library(repboxStata))
-)
+suppressWarnings(suppressPackageStartupMessages(library(repboxStata)))
 
 options(warn = 1)
 

@@ -56,11 +56,11 @@ get_rb_opts = function() {
 rb_options = function(install_from = "local_ejd",stop.on.error = TRUE, stata_version = 17, store_data_caches=TRUE, timeout = 60*5, remove_existing_problems=TRUE,stata_opts = NULL,r_opts = NULL, problem_fail_action= if(stop.on.error) "error" else "msg", ...) {
   opts = as.list(environment())
   if (is.null(stata_opts)) {
-    if (require(repboxStata))
+    if (require(repboxStata, quietly = TRUE))
       opts$stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout)
   }
   if (is.null(r_opts)) {
-    if (require(repboxR))
+    if (require(repboxR, quietly = TRUE))
       opts$r_opts = repbox_r_opts()
   }
   opts
