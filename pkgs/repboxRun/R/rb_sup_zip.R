@@ -17,9 +17,13 @@ rb_get_sup_zip = function(project_dir) {
   repboxEJD::ejd_find_downloaded_sup_zip(artid=artid)
 }
 
-rb_extract_zip_to_org = function(project_dir, zip_file=rb_get_sup_zip(project_dir), ...) {
+rb_extract_zip_to_org = function(project_dir, zip_file=rb_get_sup_zip(project_dir), ..., overwrite=TRUE) {
   restore.point("rb_extract_zip_file")
   if (is.empty(zip_file)) return()
+  if (!overwrite) {
+    if (rb_has_complete_org_dir(project_dir = project_dir, zip_file = zip_file))
+      return()
+  }
   repbox_sup_extract_zip(project_dir,sup_zip = zip_file,just_extract_code = FALSE)
 }
 

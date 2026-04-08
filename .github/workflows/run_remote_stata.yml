@@ -6,7 +6,7 @@ on:
 jobs:
   run-raw-stata:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 30
     container:
       image: skranz/repbox_gha
       options: --user root

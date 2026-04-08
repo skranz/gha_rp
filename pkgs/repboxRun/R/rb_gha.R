@@ -18,7 +18,7 @@ example = function() {
 
 }
 
-rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrite=FALSE) {
+rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwrite=FALSE) {
   restore.point("rb_run_gha_stata_reproduction")
   #stop()
   if (!overwrite && rb_has_stata_raw_reproduction(project_dir=project_dir) & (!postprocess | rb_has_stata_postprocess(project_dir=project_dir))) {
@@ -191,14 +191,18 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrit
     local_input_zip = NULL
   )
 
-  cat("\nPerform local post-processing of Stata reproduction.\n")
+  cat("\nDone with GHA stata reproduction for ", project_dir,"\n")
+
+
+  writeLines(as.character(Sys.time()), file.path(log_dir, "gha_ok.log"))
+
+  if (!postprocess) return()
 
   # ------------------------------------------------------------
   # 6. Local postprocess after the remote raw run
   # ------------------------------------------------------------
+  cat("\nPerform local post-processing of Stata reproduction.\n")
 
-
-  writeLines(as.character(Sys.time()), file.path(log_dir, "gha_ok.log"))
 
   # Now do the easy-to-debug local steps.
 
@@ -229,7 +233,7 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=TRUE, overwrit
     build_reg_info = TRUE,
     build_drf = TRUE
   )
-  cat("\nDone with stata reproduction for ", project_dir,"\n")
+  cat("\nDone with stata postprocessing reproduction for ", project_dir,"\n")
 
   cat(paste0("\nrstudioapi::filesPaneNavigate('",project_dir,"')\n"))
   writeLines(as.character(Sys.time()), file.path(log_dir, "gha_postprocess_ok.log"))
