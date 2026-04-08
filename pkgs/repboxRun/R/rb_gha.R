@@ -12,6 +12,7 @@ example = function() {
   project_dir = "/home/rstudio/repbox/projects/gha_test"
   project_dir = "~/repbox/projects/aejapp_11_2_10"
   rb_run_gha_stata_reproduction(project_dir, overwrite=TRUE)
+
   browseURL("https://github.com/skranz/gha_rp/actions")
   rstudioapi::filesPaneNavigate(project_dir)
 
