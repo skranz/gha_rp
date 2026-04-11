@@ -2,8 +2,9 @@ DESCRIPTION
 R/expost_info.R
 R/file_utils.R
 R/init.R
+R/load_repbox_libs.R
 R/project_status.R
-R/rb_deploy_tpl.R
+R/rb_deploy.R
 R/rb_docs.R
 R/rb_file_info.R
 R/rb_gha.R
@@ -11,6 +12,7 @@ R/rb_input_zip.R
 R/rb_meta.R
 R/rb_mr_base.R
 R/rb.R
+R/rb_report.R
 R/rb_reproduction.R
 R/rb_static_code.R
 R/rb_sup_zip.R

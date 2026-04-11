@@ -431,8 +431,9 @@ rb_copy_dir_contents = function(from_dir, to_dir, overwrite = TRUE) {
 
 #' Create a narrow Github Actions bundle for the raw Stata run
 #'
-#' The bundle contains only repbox/stata, steps, problems, and a copy
-#' of the raw run manifest at the bundle root.
+#' The bundle contains repbox/stata, steps, problems, a copy
+#' of the raw run manifest, and optionally generated or changed
+#' files from /mod that are not already available in /org.
 #'
 #' @export
 rb_make_gha_stata_bundle = function(
@@ -440,7 +441,12 @@ rb_make_gha_stata_bundle = function(
   bundle_dir = file.path(project_dir, "gha_output", "bundle"),
   overwrite = TRUE,
   input_zip = NULL,
-  manifest_extra = list()
+  manifest_extra = list(),
+  include_generated_mod_files = TRUE,
+  generated_mod_files = NULL,
+  ignore_repbox_generated_files = TRUE,
+  compare_mod_relative_path = TRUE,
+  treat_same_name_same_size_as_existing = TRUE
 ) {
   restore.point("rb_make_gha_stata_bundle")
 
@@ -482,6 +488,27 @@ rb_make_gha_stata_bundle = function(
     )
   }
 
+  if (isTRUE(include_generated_mod_files)) {
+    if (is.null(generated_mod_files)) {
+      generated_mod_files = rb_find_generated_mod_files(
+        project_dir = project_dir,
+        ignore_repbox_files = ignore_repbox_generated_files,
+        compare_relative_path = compare_mod_relative_path,
+        treat_same_name_same_size_as_existing = treat_same_name_same_size_as_existing,
+        only_generated = TRUE
+      )
+    }
+
+    if (NROW(generated_mod_files) > 0) {
+      rb_copy_generated_mod_files_to_dir(
+        project_dir = project_dir,
+        to_dir = file.path(bundle_dir, "mod"),
+        file_df = generated_mod_files,
+        overwrite = TRUE
+      )
+    }
+  }
+
   file.copy(
     from = manifest_file,
     to = file.path(bundle_dir, "stata_remote_manifest.Rds"),
@@ -501,7 +528,8 @@ rb_import_gha_stata_bundle = function(
   bundle_dir,
   overwrite = TRUE,
   verify = TRUE,
-  local_input_zip = NULL
+  local_input_zip = NULL,
+  import_mod_files = TRUE
 ) {
   restore.point("rb_import_gha_stata_bundle")
 
@@ -561,9 +589,30 @@ rb_import_gha_stata_bundle = function(
     )
   }
 
+  imported_mod_files = character(0)
+  if (isTRUE(import_mod_files)) {
+    mod_from = file.path(bundle_dir, "mod")
+    if (dir.exists(mod_from)) {
+      rb_copy_dir_contents(
+        from_dir = mod_from,
+        to_dir = file.path(project_dir, "mod"),
+        overwrite = overwrite
+      )
+      imported_mod_files = list.files(
+        path = mod_from,
+        recursive = TRUE,
+        full.names = FALSE,
+        all.files = TRUE,
+        no.. = TRUE
+      )
+    }
+  }
+
   invisible(list(
     project_dir = project_dir,
     bundle_dir = bundle_dir,
-    manifest = manifest
+    manifest = manifest,
+    imported_mod_files = imported_mod_files
   ))
 }
+

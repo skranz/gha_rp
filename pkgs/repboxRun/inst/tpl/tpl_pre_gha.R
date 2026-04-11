@@ -8,6 +8,8 @@ repboxRun::repbox_load_libs()
 # Should point to this project dir
 project_dir = rb_get_project_dir("{{default_project_dir}}")
 
+if (!dir.exists(project_dir)) dir.create(project_dir)
+
 if (FALSE)
   rstudioapi::filesPaneNavigate(project_dir)
 
