@@ -6,15 +6,15 @@ repbox_reg_repro_opts = function(store_data_caches = TRUE) {
 }
 
 rb_has_mr_base = function(rb, project_dir = rb$project_dir) {
-  return(FALSE)
-  file.exists(file.path(project_dir, "repdb/stata_reg_run_info.Rds"))
+  file.exists(file.path(project_dir, "repdb", "reg_rb.Rds"))
 }
 
 
 rb_run_mr_base = function(rb, overwrite = FALSE) {
-  restore.point("rb_run_stata_reg_repro")
+  restore.point("rb_run_mr_base")
   library(metaregBase)
-  rb_log_step_start(rb, "stata_reg_repro")
+
+  rb_log_step_start(rb, "mr_base")
   project_dir = rb$project_dir
 
   if (!rb_has_stata(rb)) {
@@ -22,8 +22,8 @@ rb_run_mr_base = function(rb, overwrite = FALSE) {
     return(rb)
   }
 
-  if (!rb_has_stata_reg_repro(rb)) {
-    cat("\nNo results for the required 2nd Stata reproduction run (reg_repro) found.\n")
+  if (!rb_has_stata_postprocess(rb)) {
+    cat("\nNo (postprocessed regression) results for Stata reproduction run found.\n")
     return(rb)
   }
 
@@ -35,11 +35,12 @@ rb_run_mr_base = function(rb, overwrite = FALSE) {
   }
 
   cat("\nBase Metareg\n")
-  rb_log_step_start(rb, "mr_base")
   opts = rb$opts
-  res = mr_base_run_study(project_dir, stop.on.error = opts$stop.on.error,create.repdb = TRUE,stata_version = opts$stata_version)
+  drf = rb[["drf"]]
+  if (is.null(drf)) drf = repboxDRF::drf_load(project_dir)
+
+  res = metaregBase::mrb_run_all(project_dir = project_dir, drf=drf)
+
   rb_log_step_end(rb, "mr_base")
-
-
-
+  rb
 }

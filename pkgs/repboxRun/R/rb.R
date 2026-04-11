@@ -35,7 +35,7 @@ rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing
 }
 
 rb_set_problem_opts = function(rb) {
-  repbox_set_problem_options(rb$project_dir,fail_action = rb$fail_action)
+  suppressPackageStartupMessages(repbox_set_problem_options(rb$project_dir,fail_action = rb$fail_action))
   invisible(rb)
 }
 

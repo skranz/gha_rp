@@ -3,6 +3,7 @@ R/expost_info.R
 R/file_utils.R
 R/init.R
 R/project_status.R
+R/rb_deploy_tpl.R
 R/rb_docs.R
 R/rb_file_info.R
 R/rb_gha.R

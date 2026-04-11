@@ -11,16 +11,18 @@ rb_has_complete_mod_dir = function(rb,project_dir=rb$project_dir,...) {
 }
 
 # We use heuristics
-rb_has_complete_org_dir = function(rb, project_dir=rb$project_dir, zip_file=rb_get_sup_zip(project_dir), use_file_info=TRUE, file_info=rb_parcel(rb, "file_info"), org_dir = file.path(project_dir, "org")) {
+rb_has_complete_org_dir = function(rb=NULL, project_dir=rb$project_dir, zip_file=rb_get_sup_zip(project_dir), use_file_info=TRUE, file_info=NULL, org_dir = file.path(project_dir, "org")) {
   restore.point("rb_has_complete_org")
   file_info = NULL
   org_dir = file.path(project_dir, "org")
   if (!dir.exists(org_dir)) return(FALSE)
 
+  if (use_file_info & is.null(file_info) & !is.null(rb)) {
+    file_info=rb_parcel(rb, "file_info")
+  }
   if (use_file_info & is.null(file_info)) {
     file_info = rb_get_file_info(project_dir)
   }
-
   if (is.null(file_info) & is.empty(zip_file)) return(NA)
   org_files = list.files(file.path(project_dir, "org"), recursive = TRUE)
   restore.point("khfhdkfhdf")

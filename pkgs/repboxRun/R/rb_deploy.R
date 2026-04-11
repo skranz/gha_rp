@@ -1,10 +1,15 @@
 example = function() {
   library(repboxRun)
   project_dir = "~/repbox/projects/aejapp_11_2_10"
-  rb_deploy_run_tpl(project_dir)
+  rb_deploy_run_tpl(project_dir, overwrite=FALSE)
   rb_run_scripts_job(project_dir, c("pre_gha","gha","post_gha"))
+  rb_run_scripts_job(project_dir, c("post_gha"))
   rb_run_scripts(project_dir, "pre_gha")
   rstudioapi::filesPaneNavigate(project_dir)
+
+
+
+
 }
 
 rb_run_scripts_job = function(project_dirs, tpl_names = NULL, job_file="~/repbox/jobs/rb_script_job.R") {
@@ -58,7 +63,7 @@ rb_run_scripts = function(project_dirs, tpl_names) {
 }
 
 
-rb_deploy_run_tpl = function(project_dir, tpl_names = NULL, args = list(overwrite=FALSE)) {
+rb_deploy_run_tpl = function(project_dir, tpl_names = NULL,overwrite=FALSE, args = list(overwrite=overwrite)) {
   restore.point("rb_deploy_run_tpl")
   project_dir = normalizePath(project_dir)
   tpl_dir = system.file("tpl", package="repboxRun")

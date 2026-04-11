@@ -3,7 +3,7 @@
 
 
 
-library(repboxRun)
+repboxRun::repbox_load_libs()
 
 # Should point to this project dir
 project_dir = rb_get_project_dir("{{default_project_dir}}")
@@ -13,14 +13,16 @@ if (FALSE)
 
 rb = rb_make_rb(project_dir, just_steps=NULL, ignore_steps=NULL)
 
+overwrite = {{overwrite}}
+
 # Update article and supplement meta info
-rb = rb_update_meta(rb, overwrite=FALSE)
+rb = rb_update_meta(rb, overwrite=overwrite)
 
 # Update file_info
-rb = rb_update_file_info_parcel(rb, overwrite=FALSE)
+rb = rb_update_file_info_parcel(rb, overwrite=overwrite)
 
 # Update script parcels
-rb = rb_update_script_parcels(rb, overwrite=FALSE)
+rb = rb_update_script_parcels(rb, overwrite=overwrite)
 
 # Update docs
-rb = rb_update_docs(rb, overwrite=FALSE)
+rb = rb_update_docs(rb, overwrite=overwrite)

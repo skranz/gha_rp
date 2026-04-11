@@ -3,7 +3,7 @@
 
 
 
-library(repboxRun)
+repboxRun::repbox_load_libs()
 
 # Should point to this project dir
 project_dir = rb_get_project_dir("{{default_project_dir}}")

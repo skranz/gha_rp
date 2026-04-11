@@ -9,6 +9,9 @@ example = function() {
 # A central function to return the general status of a project,
 # i.e. which steps have been run (successful or not) and when
 # and which files are there
+# A central function to return the general status of a project,
+# i.e. which steps have been run (successful or not) and when
+# and which files are there
 repbox_project_status = function(project_dir, add_fp=FALSE, add_repdb = TRUE) {
   restore.point("repbox_project_status")
   # project status will be a data.frame
@@ -88,25 +91,24 @@ repbox_project_status = function(project_dir, add_fp=FALSE, add_repdb = TRUE) {
   add_dir_rb("stata_cmd_log","repbox/stata/cmd", help="Does any file in repbox/stata/cmd exist?")
 
   # metareg base info
-  if (has_file("metareg/base")) {
+  if (has_file("repdb/reg_rb.Rds")) {
     add_dir_rb("mr_base_dir","metareg/base")
+    add_file_rb("mr_base_reg_rb", "repdb/reg_rb.Rds")
 
-    r_runtime = stata_runtime = NA_real_
-    if (has_file("metareg/base/runtimes.Rds")) {
-      rt = readRDS(fp("metareg/base/runtimes.Rds"))
-      r_runtime = rt$total$r_runtime
-      stata_runtime = rt$total$stata_runtime
+    # If you later decide to store timing info in mr_base, you can add it here.
+    add_rb("mr_base_r_runtime", val=NA_real_)
+    add_rb("mr_base_stata_runtime", val=NA_real_)
+
+    num_reg_results = 0
+    if (has_file("repdb/reg_rb.Rds")) {
+      reg_rb = readRDS(fp("repdb/reg_rb.Rds"))
+      num_reg_results = NROW(reg_rb)
     }
-    add_rb("mr_base_r_runtime", val=r_runtime)
-    add_rb("mr_base_stata_runtime", val=stata_runtime)
 
-    num_infeasible_steps = length(list.files(fp("metareg/base/step_results"), glob2rx("infeasible*.Rds")))
-    num_reg_results = length(list.files(fp("metareg/base/step_results"), glob2rx("infeasible*.Rds")))
-
-    add_rb("mr_base_num_infeasible_steps", val=num_infeasible_steps)
+    add_rb("mr_base_num_infeasible_steps", val=NA_integer_)
     add_rb("mr_base_num_reg_results", val=num_reg_results)
   } else {
-    add_rb("mr_base_dir", has=FALSE)
+    add_rb("mr_base_dir", has=has_file("metareg/base"))
   }
 
   # metareg DAP info

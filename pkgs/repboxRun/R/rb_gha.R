@@ -18,7 +18,11 @@ example = function() {
 
 }
 
-rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwrite=FALSE) {
+rb_has_ok_gha_run = function(project_dir) {
+  file.exists(file.path(project_dir, "gha_log/gha_ok.log"))
+}
+
+rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwrite=FALSE, timeout = 30*60) {
   restore.point("rb_run_gha_stata_reproduction")
   #stop()
   if (!overwrite && rb_has_stata_raw_reproduction(project_dir=project_dir) & (!postprocess | rb_has_stata_postprocess(project_dir=project_dir))) {
@@ -89,7 +93,7 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwri
     repo_dir = gha_repo_dir,
     sup_zip = sup_zip,
     overwrite = TRUE,
-    timeout = 10 * 60,
+    timeout = timeout,
     create_mod_dir = TRUE,
     capture_reg_info = TRUE,
     capture_scalar_info = TRUE,
@@ -150,7 +154,7 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwri
     repo = github_repo,
     runid = runid,
     pause.sec = 10,
-    timeout = 6 * 60 * 60
+    timeout = timeout + 60
   )
 
   cat("\nWait until workflow is completed...\n")

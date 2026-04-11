@@ -4,7 +4,7 @@
 # and if store_reg_info=TRUE also stores
 # special regression information
 
-
+repboxRun::repbox_load_libs()
 
 project_dir = rb_get_project_dir("{{default_project_dir}}")
 
