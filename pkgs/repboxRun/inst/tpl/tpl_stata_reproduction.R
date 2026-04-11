@@ -14,7 +14,7 @@ run_stata_reproduction = function(rb=NULL) {
 
   rb = rb_new(project_dir)
 
-  rb = rb_run_stata_reproduction(rb, overwrite=!FALSE, store_reg_info=TRUE)
+  rb = rb_run_stata_reproduction(rb, overwrite=TRUE)
 
   rb
 }
