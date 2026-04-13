@@ -12,4 +12,6 @@ if (FALSE)
   rstudioapi::filesPaneNavigate(project_dir)
 rb_run_gha_stata_reproduction(project_dir, overwrite=overwrite)
 
+if (FALSE)
+  browseURL("https://github.com/skranz/gha_rp/actions")
 

@@ -118,6 +118,8 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
   clear.and.create.dir(file.path(repbox.dir,"output"))
   clear.and.create.dir(file.path(repbox.dir,"timer"))
 
+  repbox_intermediate_init(project_dir = project_dir, opts = opts)
+
   if (opts$extract.reg.info | !opts$keep.old.reg.info) {
     clear.and.create.dir(file.path(repbox.dir,"tsv"))
   } else {
@@ -161,7 +163,7 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
     if (!file.exists(log.file)) {
       repbox_problem(type="included_do_no_log", msg=paste0("\n run ", do$dofile, " (no existing log even though it should have been included)\n"), fail_action = "msg")
     }
-    if (!file.exists(log.file) & opts$rerun.failed.included.do) {
+    if (!file.exists(log.file) & opts$rerun_failed.included.do) {
       do$is.included = FALSE
       do = stata.inject.and.run(do, opts=opts,start.time = run.start.time)
       return(do)
@@ -181,6 +183,7 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
 
   invisible(parcels)
 }
+
 
 
 repbox_stata_extract = function(project_dir, dotab = readRDS.or.null(file.path(project_dir,"repbox/stata/dotab.Rds")), opts=rbs.opts()) {
@@ -229,8 +232,13 @@ repbox_stata_extract = function(project_dir, dotab = readRDS.or.null(file.path(p
     rep.res$scalar_df = scalar_df
   }
 
+  rep.res$imd_df = repbox_make_intermediate_data_df(project_dir = project_dir,run_df = rep.res$run.df,opts = opts)
+
+
+
   return(invisible(rep.res))
 }
+
 
 
 parse.sup.do = function(file, reg.cmds = get.regcmds(), project_dir="", catch.err=TRUE, code=NULL, stop.on.error=FALSE) {

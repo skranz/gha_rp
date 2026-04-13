@@ -1,3 +1,30 @@
+Yes, this is a real bug in `repbox_correct_path.ado`, not in the R-side injection.
+
+The specific failure path for your example is:
+
+`save ../data/temp.dta, replace`
+-> `correct_file_path_rel_create()`
+-> `correct_dir_path_rel_exists()`
+-> `correct_dir_path_abs_exists()`
+-> `find_dir_all_recursive()`
+
+For `../data/temp.dta`, the code correctly infers the candidate directory `/.../mod/data`, but `find_dir_all_recursive()` only searches descendants of `supdir` and forgets to include `supdir` itself as a search root. Because of that, a direct child directory like `mod/data` is never matched, and the code falls back to `supdir`, producing `/.../mod/temp.dta`.
+
+While tracing that, I also found two additional issues in the same Mata helper that can cause other path bugs:
+
+* `is_subdir_or_same()` is logically reversed and also lacks a path-boundary check.
+* In `guess_best_rel_to_abs_path()`, the fallback branch that checks `dodir` mistakenly returns `wdir + relpath` instead of `dodir + relpath`.
+
+So I would fix all three in the same file.
+
+!MODIFICATION repbox_correct_path.ado
+scope = "file"
+file = "inst/ado/r/repbox_correct_path.ado"
+is_new_file = false
+description = "Fix save-path correction so existing target directories like mod/data are recognized, and correct related subdir and dodir fallback logic in the Mata path helper."
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+```stata
 // clear all
 
 program repbox_correct_path, rclass
@@ -511,3 +538,8 @@ mata: subpath_right("C:\mydir1\mydir2\mydir3\mydir4\myfile", -3)
 
 mata: subpath_right("C:\mydir1\mydir2\mydir3\mydir4\myfile", 2)
 */
+```
+
+!END_MODIFICATION repbox_correct_path.ado
+
+After this change, your test case should resolve the first save target to `/home/rstudio/repbox/projects_test/test/mod/data/temp.dta` instead of `/home/rstudio/repbox/projects_test/test/mod/temp.dta`.

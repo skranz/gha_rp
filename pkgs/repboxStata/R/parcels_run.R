@@ -33,7 +33,8 @@ repbox_save_stata_run_parcels = function(project_dir, parcels=list(), repbox_res
   run_df = res$run.df %>%
     mutate(
       artid = artid,
-      found_path = file_path_relative_to_supp(foundfile, paste0("/", artid, "/mod/"),wdir = wdir, supp.dir = paste0(project_dir, "/", artid, "/mod/")),
+      #found_path = file_path_relative_to_supp(foundfile, paste0("/", artid, "/mod/"),wdir = wdir, supp.dir = paste0(project_dir, "/", artid, "/mod/")),
+      found_path = file_path_relative_to_supp(foundfile, paste0("/", artid, "/mod/"),wdir = wdir, supp.dir = paste0(project_dir, "/mod/")),
       missing_data = !has.data
     ) %>%
     rename(
@@ -94,6 +95,8 @@ repbox_save_stata_run_parcels = function(project_dir, parcels=list(), repbox_res
   }
 
   parcels$stata_run_info = run_info
+
+
 
   repdb_save_parcels(parcels[c("stata_run_cmd","stata_run_log","stata_run_info", "xtvar")], file.path(project_dir, "repdb") )
   invisible(parcels)

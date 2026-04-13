@@ -86,6 +86,7 @@ inject.do = function(do, reg.cmds = get.regcmds(), save.changed.data=1, opts=rbs
   }
 
 
+
   # New: dynamic path correction
   # This replaces a file reference to a placeholder, e.g.
   # use mydata, clear -> use "`r(repbox_corrected_path)'", clear
@@ -174,8 +175,30 @@ inject.do = function(do, reg.cmds = get.regcmds(), save.changed.data=1, opts=rbs
   }
 
 
+  # Add intermediate data injections around save commands
+  # They will be inside other save corrections etc and
+  lines = setdiff(
+    which(tab$cmd %in% c("save", "sa", "sav", "saveold", "gsave", "gzsave","erase","rm")),
+    no.study.lines
+  )
+  new.txt[lines] = paste0(
+    inject.intermediate.data.pre(lines, do, opts),
+    new.txt[lines]
+  )
+
+  # for file deletions just make a local copy of existing file
+  # done in pre
+  lines = setdiff(
+    which(tab$cmd %in% c("erase","rm")),
+    no.study.lines
+  )
+  new.txt[lines] = paste0(
+    inject.intermediate.data.pre(lines, do, opts),
+    new.txt[lines]
+  )
+
   # Add injection after use, save, clear commands
-  lines = setdiff(which(tab$cmd %in% c("use","u","us", "save","sa", "sav", "saveold", "clear","import","guse","gsave","gzuse","gzsave")), no.study.lines)
+  lines = setdiff(which(tab$cmd %in% c("use","u","us", "save","sa", "sav", "saveold", "clear","import","guse","gsave","gzuse","gzsave","rm","erase")), no.study.lines)
   special.lines = c(special.lines, lines)
   inj.txt = injection.use.etc(txt[lines],lines,do)
   new.txt[lines] = paste0(new.txt[lines], inj.txt )
@@ -388,18 +411,20 @@ end.injection = function(donum, lines, type,...) {
 }
 
 
-post.injection = function(txt, lines, do, report.xtset=FALSE) {
+post.injection = function(txt, lines, do, report.xtset=FALSE, opts = rbs.opts()) {
   restore.point("post.injection")
   rep.dir = file.path(do$project_dir,"repbox/stata")
   cmdfile = file.path(rep.dir,"cmd", paste0("postcmd_",do$donum,".csv"))
   tab = do$tab[[1]]
   errcode_str = ifelse(is.true(tab$add.capture[lines]),"`=_rc\'","")
+
+
   inj.txt = paste0(
     '
+
 qui {
 file open repbox_cmd_file using "', cmdfile,'", write append
 file write repbox_cmd_file `"', do$donum,';', lines,';`repbox_local_cmd_count\';$S_TIME;',errcode_str,';;','"\'',
-# Add call xtset to set r(timevar) etc...
 if (report.xtset) '\ncapture xtset',
 '\nfile write repbox_cmd_file `"',
 if (report.xtset) '`r(timevar)\';`r(panelvar)\';`r(tdelta)\'' else ';;',
@@ -407,9 +432,6 @@ if (report.xtset) '`r(timevar)\';`r(panelvar)\';`r(tdelta)\'' else ';;',
 file write repbox_cmd_file _n
 file close repbox_cmd_file
 ',
-# We add the display command to reset _rc to 0 if there was an error in xtset
-# if (report.xtset) 'capture display 0\n',
-# Close qui
 '\n}'
   )
   # Don't inject code if a block is opened (if, foreach etc)
@@ -419,36 +441,6 @@ file close repbox_cmd_file
   inj.txt
 }
 
-
-post.injection.old = function(txt, lines, do, reset.datasig=FALSE, report.datasig=FALSE, report.xtset=FALSE) {
-  restore.point("post.injection")
-  rep.dir = file.path(do$project_dir,"repbox/stata")
-  cmdfile = file.path(rep.dir,"cmd", paste0("postcmd_",do$donum,".csv"))
-  tab = do$tab[[1]]
-  errcode_str = ifelse(is.true(tab$add.capture[lines]),"`=_rc\'","")
-  inj.txt = paste0(
-    '
-qui {
-file open repbox_cmd_file using "', cmdfile,'", write append
-file write repbox_cmd_file `"', do$donum,';', lines,';`repbox_local_cmd_count\';$S_TIME;',errcode_str,';;',
-if (report.xtset) '`r(timevar)\';`r(panelvar)\';`r(tdelta)\'' else ';;','"\'
-file write repbox_cmd_file _n
-file close repbox_cmd_file
-',
-# We add the display command to reset _rc to 0 if there is an error in xtset
-# Note that xtset must be add the end since other _rc will be overwritten
-if (report.xtset) 'capture xtset\ncapture display 0','
-',
-'
-}
-'
-  )
-  # Don't inject code if a block is opened (if, foreach etc)
-  inj.txt[tab$opens_block[lines]] = ""
-  save.dta.code = save.dta.injection(txt, lines, do)
-  inj.txt = paste0(inj.txt, save.dta.code)
-  inj.txt
-}
 
 save.dta.injection = function(txt, lines, do, opts=rbs.opts()) {
   restore.point("save.dta.injection")
@@ -527,7 +519,7 @@ save "',save.dta.files,'", replace
   all.code
 }
 
-pre.injection = function(txt, lines=seq_along(txt), do) {
+pre.injection = function(txt, lines=seq_along(txt), do, opts = rbs.opts()) {
   #restore.point("pre.injection")
   rep.dir = file.path(do$project_dir,"/repbox/stata")
   cmd.file = file.path(rep.dir,"cmd", paste0("precmd_",do$donum,".csv"))
@@ -547,7 +539,11 @@ local repbox_local_cmd_count = $repbox_cmd_count
 local repbox_cmdline = `"',cmdline_txt,'"\'
 ')
 
-  inj.txt[add.path.correction] = paste0(inj.txt[add.path.correction],"\n",inject.path.correction.pre(txt[add.path.correction],lines[add.path.correction],do))
+  inj.txt[add.path.correction] = paste0(
+    inj.txt[add.path.correction],
+    "\n",
+    inject.path.correction.pre(txt[add.path.correction],lines[add.path.correction],do)
+  )
 
   found.path = ifelse(add.path.correction,'`r(repbox_corrected_path)\'','')
   wdir = ifelse(add.path.correction,"`c(pwd)'","")
@@ -565,6 +561,7 @@ ifelse(tab$in_loop[lines]==2,"", start.injection(do$donum, lines, "RUNCMD", do))
   )
   inj.txt
 }
+
 
 inject.loop.max.run = function(txt, before.txt, lines, do) {
   restore.point("inject.loop.max.run")
@@ -672,17 +669,59 @@ inject.path.correction.change.cmd = function(txt, lines=seq_along(txt), do) {
 }
 
 
+inject.intermediate.data.pre = function(lines, do, opts = rbs.opts()) {
+  if (!isTRUE(opts$capture_intermediate_data) || length(lines) == 0) {
+    return(rep("", length(lines)))
+  }
+
+  paths = intermediate.data.paths(do)
+
+  paste0(
+    '\nrepbox_intermediate_data archive_previous "`repbox_corrected_path\'" "',
+    paths$mod_dir, '" "',
+    paths$intermediate_dir, '" "',
+    paths$state_dir, '"\n'
+  )
+}
+
+
+inject.intermediate.data.post = function(lines, do, opts = rbs.opts()) {
+  if (!isTRUE(opts$capture_intermediate_data) || length(lines) == 0) {
+    return(rep("", length(lines)))
+  }
+
+  paths = intermediate.data.paths(do)
+
+  paste0(
+    '\nrepbox_intermediate_data mark_saved "`repbox_corrected_path\'" "',
+    paths$mod_dir, '" "',
+    paths$intermediate_dir, '" "',
+    paths$state_dir, '" ',
+    do$donum, ' ', lines, ' `repbox_local_cmd_count\'\n'
+  )
+}
+
 injection.use.etc = function(txt, lines=seq_along(txt), do, opts=rbs.opts()) {
   restore.point("injection.use.etc")
   tab = do$tab[[1]]
+
+  post.txt = post.injection(txt, lines, do=do, report.xtset=TRUE)
+
+
+  im_post = rep("", length(lines))
+  save_rows = tab$cmd[lines] %in% c("save", "sa", "sav", "saveold", "gsave", "gzsave", "erase","rm")
+  if (isTRUE(opts$capture_intermediate_data) && any(save_rows)) {
+    im_post[save_rows] = inject.intermediate.data.post(lines[save_rows], do, opts)
+  }
+
   paste0('
 ', end.injection(do$donum,lines, "RUNCMD", do),'
 * ', toupper(tab$cmd[lines]),' INJECTION START
-',post.injection(txt,lines,do=do, report.xtset=TRUE),'
+', post.txt,
+im_post,'
 * INJECTION END
 ')
 }
-
 
 
 # esttab generates a latex output file
@@ -706,6 +745,10 @@ capture noisily copy "`repbox_corrected_path\'" "',output.file,'"
 * INJECTION END
 ')
 }
+
+
+
+
 
 injection.graph.save = function(txt, lines, do) {
   restore.point("injection.graph.save")

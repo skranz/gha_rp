@@ -432,8 +432,8 @@ rb_copy_dir_contents = function(from_dir, to_dir, overwrite = TRUE) {
 #' Create a narrow Github Actions bundle for the raw Stata run
 #'
 #' The bundle contains repbox/stata, steps, problems, a copy
-#' of the raw run manifest, and optionally generated or changed
-#' files from /mod that are not already available in /org.
+#' of the raw run manifest, generated or changed files from /mod
+#' that are not already available in /org, and intermediate_data.
 #'
 #' @export
 rb_make_gha_stata_bundle = function(
@@ -443,6 +443,7 @@ rb_make_gha_stata_bundle = function(
   input_zip = NULL,
   manifest_extra = list(),
   include_generated_mod_files = TRUE,
+  filter_mod_by_intermediate = TRUE,
   generated_mod_files = NULL,
   ignore_repbox_generated_files = TRUE,
   compare_mod_relative_path = TRUE,
@@ -499,6 +500,21 @@ rb_make_gha_stata_bundle = function(
       )
     }
 
+    if (isTRUE(filter_mod_by_intermediate) && NROW(generated_mod_files) > 0) {
+      im_file = file.path(project_dir, "repbox", "stata", "intermediate_data.Rds")
+      if (file.exists(im_file)) {
+        im_df = readRDS(im_file)
+        if (NROW(im_df) > 0 && "file_path" %in% names(im_df)) {
+          keep = generated_mod_files$rel_path %in% im_df$file_path
+          generated_mod_files = generated_mod_files[keep, , drop = FALSE]
+        } else {
+          generated_mod_files = generated_mod_files[0, , drop = FALSE]
+        }
+      } else {
+        generated_mod_files = generated_mod_files[0, , drop = FALSE]
+      }
+    }
+
     if (NROW(generated_mod_files) > 0) {
       rb_copy_generated_mod_files_to_dir(
         project_dir = project_dir,
@@ -507,6 +523,15 @@ rb_make_gha_stata_bundle = function(
         overwrite = TRUE
       )
     }
+  }
+
+  # Deprecated root intermediate_data folder mapping (retained in case old setups exist)
+  if (dir.exists(file.path(project_dir, "intermediate_data"))) {
+    rb_copy_tree(
+      from = file.path(project_dir, "intermediate_data"),
+      to = file.path(bundle_dir, "intermediate_data"),
+      overwrite = TRUE
+    )
   }
 
   file.copy(
@@ -520,6 +545,7 @@ rb_make_gha_stata_bundle = function(
   invisible(bundle_dir)
 }
 
+
 #' Import a raw Github Actions Stata bundle into a local project
 #'
 #' @export
@@ -529,7 +555,9 @@ rb_import_gha_stata_bundle = function(
   overwrite = TRUE,
   verify = TRUE,
   local_input_zip = NULL,
-  import_mod_files = TRUE
+  import_mod_files = TRUE,
+  import_intermediate_data = TRUE,
+  restore_intermediate_data_to_mod = TRUE
 ) {
   restore.point("rb_import_gha_stata_bundle")
 
@@ -608,11 +636,37 @@ rb_import_gha_stata_bundle = function(
     }
   }
 
+  imported_intermediate_files = character(0)
+  if (isTRUE(import_intermediate_data)) {
+    intermediate_from = file.path(bundle_dir, "intermediate_data")
+    if (dir.exists(intermediate_from)) {
+      rb_copy_tree(
+        from = intermediate_from,
+        to = file.path(project_dir, "intermediate_data"),
+        overwrite = overwrite
+      )
+      imported_intermediate_files = list.files(
+        path = intermediate_from,
+        recursive = TRUE,
+        full.names = FALSE,
+        all.files = TRUE,
+        no.. = TRUE
+      )
+    }
+  }
+
+  if (isTRUE(restore_intermediate_data_to_mod)) {
+    # If the user explicitly asks, try to map the restored items back to mod
+    # but normally the mod mapping is extracted organically.
+    # rb_restore_latest_intermediate_data_to_mod(project_dir, overwrite = overwrite)
+  }
+
   invisible(list(
     project_dir = project_dir,
     bundle_dir = bundle_dir,
     manifest = manifest,
-    imported_mod_files = imported_mod_files
+    imported_mod_files = imported_mod_files,
+    imported_intermediate_files = imported_intermediate_files
   ))
 }
 

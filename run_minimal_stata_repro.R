@@ -2,6 +2,9 @@ cat("\nGHA: Start Reproduction\n")
 
 source("install_repbox_pkgs.R", local = TRUE)
 
+repboxRun::repbox_load_libs()
+
+
 message = function(...) {
   cat(paste0("\n", ..., "\n"))
 }
@@ -26,19 +29,6 @@ resolve_stata_bin = function(candidates) {
 }
 
 
-suppressWarnings(suppressPackageStartupMessages(require(repboxR)))
-
-suppressWarnings(suppressPackageStartupMessages(library(collapse)))
-suppressWarnings(suppressPackageStartupMessages(library(stata2r)))
-suppressWarnings(suppressPackageStartupMessages(library(repboxStataReg)))
-suppressWarnings(suppressPackageStartupMessages(library(repboxDRF)))
-
-
-cat("\nlibrary(repboxRun)\n")
-suppressWarnings(suppressPackageStartupMessages(library(repboxRun)))
-
-cat("\nlibrary(repboxStata)\n")
-suppressWarnings(suppressPackageStartupMessages(library(repboxStata)))
 
 options(warn = 1)
 
@@ -74,6 +64,10 @@ message("path.expand('~/ado/plus')=", path.expand("~/ado/plus"))
 
 ado_plus = Sys.getenv("REPBOX_ADO_PLUS", unset = "/root/ado/plus")
 message("Using ado plus dir: ", ado_plus)
+
+# Update ado scripts from current repboxStata version
+copy_repbox_ado_files(ado_plus, overwrite=TRUE)
+
 
 if (!dir.exists(ado_plus)) {
   stop(
