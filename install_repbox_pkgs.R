@@ -6,5 +6,6 @@ inst = function(pkg, force=TRUE) {
 }
 inst("pkgs/repboxStata")
 inst("pkgs/repboxRun")
+inst("pkgs/repboxUtils")
 
 cat("\nDone local package installation.\n")
