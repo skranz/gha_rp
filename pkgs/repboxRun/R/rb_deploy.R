@@ -1,7 +1,8 @@
 example = function() {
   library(repboxRun)
-  project_dir = "~/repbox/projects/aejapp_11_2_10"
-  rb_deploy_run_tpl(project_dir, overwrite=FALSE)
+  project_dir = "~/repbox/projects/aejapp_1_3_4"
+  rb_deploy_run_tpl(project_dir, overwrite=TRUE)
+  rb_deploy_f2p_toml(project_dir, overwrite=TRUE)
   rb_run_scripts_job(project_dir, c("pre_gha","gha","post_gha"))
   rb_run_scripts_job(project_dir, c("post_gha"))
   rb_run_scripts(project_dir, "pre_gha")
@@ -95,6 +96,41 @@ rb_deploy_run_tpl = function(project_dir, tpl_names = NULL,overwrite=FALSE, args
   cat("\nGenerated ", length(tpl_names), " run files in ", run_dir, "\n")
   invisible(tpl_name)
 }
+
+
+rb_deploy_f2p_toml = function(project_dir, tpl_names = NULL,overwrite=FALSE, args = list(overwrite=overwrite)) {
+  restore.point("rb_deploy_f2p_toml")
+  project_dir = normalizePath(project_dir)
+  tpl_dir = system.file("tpl", package="repboxRun")
+  #stop()
+  if (length(tpl_names)==0) {
+    tpl_files = list.files(tpl_dir, glob2rx("tpl_f2p*.toml"),full.names = FALSE)
+    tpl_names = str.between(tpl_files, "tpl_", ".toml")
+  }
+  tpl_name = tpl_names[[1]]
+
+  if (length(tpl_names)==0) return()
+
+  run_dir = file.path(project_dir, "run")
+  if (!dir.exists(run_dir)) dir.create(run_dir, recursive = TRUE)
+
+  args$project_dir = project_dir
+  rx_pattern = paste0("{{{", names(args),"}}}")
+  rx_repl = unlist(args)
+  artid = basename(project_dir)
+
+  for (tpl_name in tpl_names) {
+    file = paste0(tpl_dir, "/tpl_", tpl_name, ".toml")
+    txt = read_utf8(file)
+    txt = stringi::stri_replace_all_fixed(txt, rx_pattern, rx_repl, vectorize_all = FALSE)
+    out_file = paste0(run_dir, "/",tpl_name,"_",artid,".toml")
+    writeUtf8(txt, out_file)
+
+  }
+  cat("\nGenerated ", length(tpl_names), " f2p TOML files in ", project_dir, "\n")
+  invisible(tpl_name)
+}
+
 
 source_with_log = function(script_file, log_file,
                            echo = TRUE,

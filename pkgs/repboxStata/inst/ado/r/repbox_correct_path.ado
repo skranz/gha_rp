@@ -248,6 +248,9 @@ real scalar function path_match_size_from_right(string scalar path1, string scal
   real scalar size
   string scalar p1, p2
 
+  path1 = ustrlower(normalize_path(path1))
+  path2 = ustrlower(normalize_path(path2))
+
   size = 1
   while (1 == 1) {
     p1 = subpath_right(path1, size)
@@ -282,19 +285,34 @@ real scalar function count_characters(string scalar str, string scalar char) {
 
 string colvector function find_dir_all(string scalar dir, string colvector dirs)
 {
-  real scalar i
-  string colvector res
-  string scalar fullname
+  real scalar i, j
+  string colvector exact_matches, ci_matches, entries
+  string scalar fullname, target, entry
 
+  exact_matches = J(0, 1, "")
   for (i = 1; i <= rows(dirs); i++) {
     fullname = dirs[i] + "/" + dir
     if (direxists(fullname)) {
-      res = res \ fullname
+      exact_matches = exact_matches \ fullname
     }
   }
-  return(res)
-}
+  if (rows(exact_matches) > 0) {
+    return(exact_matches)
+  }
 
+  ci_matches = J(0, 1, "")
+  target = ustrlower(dir)
+  for (i = 1; i <= rows(dirs); i++) {
+    entries = dir(dirs[i], "dirs", "*")
+    for (j = 1; j <= rows(entries); j++) {
+      entry = entries[j]
+      if (ustrlower(entry) == target) {
+        ci_matches = ci_matches \ (dirs[i] + "/" + entry)
+      }
+    }
+  }
+  return(ci_matches)
+}
 string colvector function find_dir_all_recursive(string scalar dir, string scalar pdir) {
   string colvector dirs
   // Include pdir itself so direct child directories like pdir/data are found.
@@ -304,19 +322,34 @@ string colvector function find_dir_all_recursive(string scalar dir, string scala
 
 string colvector function find_file_all(string scalar file, string colvector dirs)
 {
-  real scalar i
-  string colvector files
-  string scalar fullname
+  real scalar i, j
+  string colvector exact_matches, ci_matches, entries
+  string scalar fullname, target, entry
 
+  exact_matches = J(0, 1, "")
   for (i = 1; i <= rows(dirs); i++) {
     fullname = dirs[i] + "/" + file
     if (fileexists(fullname)) {
-      files = files \ fullname
+      exact_matches = exact_matches \ fullname
     }
   }
-  return(files)
-}
+  if (rows(exact_matches) > 0) {
+    return(exact_matches)
+  }
 
+  ci_matches = J(0, 1, "")
+  target = ustrlower(file)
+  for (i = 1; i <= rows(dirs); i++) {
+    entries = dir(dirs[i], "files", "*")
+    for (j = 1; j <= rows(entries); j++) {
+      entry = entries[j]
+      if (ustrlower(entry) == target) {
+        ci_matches = ci_matches \ (dirs[i] + "/" + entry)
+      }
+    }
+  }
+  return(ci_matches)
+}
 string colvector function find_file_all_recursive(string scalar file, string scalar pdir) {
   string colvector dirs
   // Get pdir and all descendant directories

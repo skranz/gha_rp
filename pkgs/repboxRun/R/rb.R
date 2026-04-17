@@ -4,7 +4,7 @@ rb_get_project_dir = function(project_dir) {
   return(project_dir)
 }
 
-rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing=TRUE, parent_env = parent.frame(), fail_action="error") {
+rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing=TRUE, parent_env = parent.frame(), fail_action="error", forced_fail_action = NULL) {
   restore.point("rb_make_rb")
 
   if (!dir.exists(project_dir))
@@ -17,6 +17,7 @@ rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing
       rb$just_steps = just_steps
       rb$ignore_steps = ignore_steps
       rb$fail_action = fail_action
+      rb$forced_fail_action = forced_fail_action
       rb_set_problem_opts(rb)
       return(old_rb)
     }
@@ -28,14 +29,15 @@ rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing
     ignore_steps = ignore_steps,
     parcels = list(),
     opts =  rb_options(),
-    fail_action = fail_action
+    fail_action = fail_action,
+    forced_fail_action = forced_fail_action
   )
   rb_set_problem_opts(rb)
   rb
 }
 
 rb_set_problem_opts = function(rb) {
-  suppressPackageStartupMessages(repbox_set_problem_options(rb$project_dir,fail_action = rb$fail_action))
+  suppressPackageStartupMessages(repbox_set_problem_options(rb$project_dir,fail_action = rb$fail_action, forced_fail_action = rb$forced_fail_action))
   invisible(rb)
 }
 

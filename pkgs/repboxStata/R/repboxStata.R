@@ -55,11 +55,8 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
     check_stata_paths_and_ado(on_fail="error")
   }
 
-
   if (!dir.exists(repbox.dir)) dir.create(repbox.dir,recursive = TRUE)
 
-
-  # Reset log of find_files.R
   writeLines(
     "mode,found_file,org_file,sup_dir,cmd,default_ext,wdir",
     file.path(repbox.dir,"find_path_log.csv")
@@ -68,8 +65,6 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
   cmd.file = file.path(repbox.dir, "stata_cmd.csv")
   if (file.exists(cmd.file)) file.remove(cmd.file)
 
-  # Remove __MACOSX dirs from supplement
-  # TODO: Run on a more general level
   try(remove.macosx.dirs(project_dir),silent = TRUE)
 
   do.files = list.files(sup.dir,glob2rx("*.do"),full.names = TRUE,recursive = TRUE)
@@ -101,7 +96,6 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
   which.do = seq_len(NROW(do.df))
 
   if (opts$install.missing.modules) {
-    # Check missing modules
     for (i in which.do) {
       cat(paste0("\nCheck stata modules: ",i, " of ", length(which.do)))
       do.df$tab[[i]] =  tab.install.missing.modules(do.df$tab[[i]])
@@ -114,6 +108,7 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
 
   clear.and.create.dir(file.path(repbox.dir,"logs"))
   clear.and.create.dir(file.path(repbox.dir,"dta"))
+  clear.and.create.dir(file.path(repbox.dir,"cached_dta"))
   clear.and.create.dir(file.path(repbox.dir,"cmd"))
   clear.and.create.dir(file.path(repbox.dir,"output"))
   clear.and.create.dir(file.path(repbox.dir,"timer"))
@@ -127,8 +122,6 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
       dir.create(file.path(repbox.dir,"tsv"))
   }
 
-  # First inject code and generate repbox_.do files
-  # for do files that are included in other do files
   incl.inject.res = lapply(incl.which.do, function(i) {
     do = do.df[i,]
     cat(paste0("\n inject code for included ", do$dofile))
@@ -137,15 +130,12 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
   })
 
   if (opts$set.stata.defaults.perma) {
-    # Run global Stata setup do file
     setup.do.file = system.file("misc/stata_setup.do",package = "repboxStata")
     file.copy(setup.do.file, file.path(project_dir,"repbox/stata"))
     run_stata_do(file.path(project_dir,"repbox/stata/stata_setup.do"), verbose=FALSE)
   }
 
-
   run.start.time = Sys.time()
-  # Run do files that are not included in other do files
   which.do = setdiff(which.do, incl.which.do)
 
   do.li = lapply(seq_along(which.do), function(i) {
@@ -159,7 +149,6 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
   incl.extract.do.li = lapply(incl.which.do, function(i) {
     do = do.df[i,]
     log.file = file.path(repbox.dir,"logs",paste0("include_", do$donum,".log"))
-    # The include did not run. Run manually instead
     if (!file.exists(log.file)) {
       repbox_problem(type="included_do_no_log", msg=paste0("\n run ", do$dofile, " (no existing log even though it should have been included)\n"), fail_action = "msg")
     }
@@ -183,6 +172,7 @@ repbox_project_run_stata = function(project_dir, opts=repbox_stata_opts(), parce
 
   invisible(parcels)
 }
+
 
 
 
