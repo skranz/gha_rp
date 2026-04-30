@@ -1,164 +1,369 @@
-The root cause of this issue stems from how **repboxDRF** handles path truncations for dataset caches and how it compiles the R translations.
+Change **two functions** in:
 
-### What is happening?
-1. **Why does the path start with a merge command?** 
-   During the Stata reproduction run, intermediate states (like the result of `merge`) can be cached (saved as `.dta` files). When `drf_apply_caches()` analyzes the regression paths, it finds that it's safe to skip the initial data loading and prep steps by simply loading the cache created immediately after the `merge` command (e.g., `181_cache.dta`). Consequently, it truncates the execution path so that the `merge` command (`runid=181`) becomes the **first** node in the path for the regression `pid=206`.
-
-2. **Why is the merge command executed instead of the cache loaded?**
-   When `drf_make_r_trans_parcel()` generated the R translations for the entire project, it cached them in the global `r_trans` parcel. While the Stata equivalent (`drf_stata_code_df`) dynamically replaces the first command of a path with a `use "cache.dta", clear` command, the R pipeline (`drf_get_data`) was just blindly pulling the global R translation from the parcel. Since the `merge` command isn't globally a "load" command, it retained its normal translation (`scmd_merge(...)`).
-   
-   Because `drf_get_data()` evaluates the path starting at this `merge` command without loading any prior data, `data` is empty/missing, and `haven::read_dta` naturally fails.
-
-### The Solution
-We need to dynamically inject the cache-loading R code at the beginning of the execution sequence whenever the first step of a path relies on a file cache. We must update `drf_get_data` to execute it properly, and `mrb_test_code_path` to display it correctly in the testing scripts.
-
-Here are the modifications to fix the problem:
-
-!MODIFICATION drf_get_data repboxDRF/R/drf_run_r.R
-scope = "function"
-file = "drf_run_r.R"
-function_name = "drf_get_data"
-description = "Inject cache loading code at the start of the R execution sequence if the first command of the truncated path acts as a cache load."
----
 ```r
-drf_get_data = function(runid=pid, drf, filtered=TRUE, before=TRUE, update_rcode=FALSE, exec_env = new.env(parent = globalenv()), pid=NULL) {
-  restore.point("drf_get_data")
-  if (is.null(runid)) {
-    stop("Specify a runid (or pid as synonym).")
+/home/rstudio/repbox/repboxRun/R/rb_gha.R
+```
+
+First, make the GHA bundle include selected `repdb/*.Rds` parcels, especially `stata_scalar.Rds`.
+
+!MODIFICATION rb_make_gha_stata_bundle in rb_gha.R
+scope = "function"
+file = "/home/rstudio/repbox/repboxRun/R/rb_gha.R"
+function_name = "rb_make_gha_stata_bundle"
+description = "Copy selected repdb parcels, including stata_scalar.Rds, into the Github Actions result bundle."
+---------------------------------------------------------------------------------------------------------------
+
+```r
+#' Create a narrow Github Actions bundle for the raw Stata run
+#'
+#' The bundle contains repbox/stata, steps, problems, selected repdb
+#' parcels from the raw run, a copy of the raw run manifest, generated
+#' or changed files from /mod that are not already available in /org,
+#' and intermediate_data.
+#'
+#' @export
+rb_make_gha_stata_bundle = function(
+  project_dir,
+  bundle_dir = file.path(project_dir, "gha_output", "bundle"),
+  overwrite = TRUE,
+  input_zip = NULL,
+  manifest_extra = list(),
+  include_generated_mod_files = TRUE,
+  filter_mod_by_intermediate = TRUE,
+  generated_mod_files = NULL,
+  ignore_repbox_generated_files = TRUE,
+  compare_mod_relative_path = TRUE,
+  treat_same_name_same_size_as_existing = TRUE,
+  include_repdb_parcels = c("stata_scalar")
+) {
+  restore.point("rb_make_gha_stata_bundle")
+
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
+  if (!file.exists(file.path(project_dir, "repbox", "stata", "repbox_results.Rds"))) {
+    stop("No raw Stata results found in repbox/stata.")
   }
-  runids = drf_runids(drf)
-  if (!runid %in% runids) {
-    stop("runid is not part of any DRF path. We only build paths that lead to a successfully run regression.")
+
+  manifest_file = rb_write_stata_run_manifest(
+    project_dir = project_dir,
+    input_zip = input_zip,
+    extra = manifest_extra
+  )
+
+  if (dir.exists(bundle_dir) && overwrite) {
+    unlink(bundle_dir, recursive = TRUE, force = TRUE)
   }
-  path_df = drf$path_df
-  pid = first(path_df$pid[path_df$runid == runid])
+  dir.create(bundle_dir, recursive = TRUE, showWarnings = FALSE)
 
-  path_df_full = path_df[path_df$pid == pid,]
+  rb_copy_tree(
+    from = file.path(project_dir, "repbox", "stata"),
+    to = file.path(bundle_dir, "repbox", "stata"),
+    overwrite = TRUE
+  )
 
-  if (before) {
-    path_df_sub = path_df_full[path_df_full$runid < runid,]
-  } else {
-    path_df_sub = path_df_full[path_df_full$runid <= runid,]
-  }
-
-  exec_runids = path_df_sub$runid
-  run_df = drf$run_df
-  if (!has_col(run_df, "rcode") | update_rcode) {
-    # Ensure full context is passed to rcode generation, including the target `pid`
-    run_df = drf_run_df_create_rcode(run_df, runids=path_df_full$runid)
-  }
-  rows = match(exec_runids, run_df$runid)
-  rows = rows[run_df$rcode[rows] != ""]
-
-  rcode = run_df$rcode[rows]
-
-  if (length(rcode)==0) {
-    stop("No R code found for getting data. That looks like a bug.")
+  if (dir.exists(file.path(project_dir, "steps"))) {
+    rb_copy_tree(
+      from = file.path(project_dir, "steps"),
+      to = file.path(bundle_dir, "steps"),
+      overwrite = TRUE
+    )
   }
 
-  # --- INJECT CACHE LOAD CODE IF APPLICABLE ---
-  if (length(exec_runids) > 0) {
-    first_runid = exec_runids[1]
-    first_row = match(first_runid, run_df$runid)
-    if (!is.na(first_row) && isTRUE(run_df$has_file_cache[first_row])) {
-      drf_rel_path = paste0("cached_dta/", basename(run_df$drf_cache_file[first_row]))
-      cache_load_code = paste0(
-        'data = drf_load_data(project_dir, "', drf_rel_path ,'")\n',
-        'data$stata2r_original_order_idx = seq_len(nrow(data))\n',
-        'assign("has_original_order_idx", TRUE, envir = stata2r::stata2r_env)'
+  if (dir.exists(file.path(project_dir, "problems"))) {
+    rb_copy_tree(
+      from = file.path(project_dir, "problems"),
+      to = file.path(bundle_dir, "problems"),
+      overwrite = TRUE
+    )
+  }
+
+  if (length(include_repdb_parcels) > 0) {
+    repdb_files = file.path(
+      project_dir,
+      "repdb",
+      paste0(include_repdb_parcels, ".Rds")
+    )
+    repdb_files = repdb_files[file.exists(repdb_files)]
+
+    if (length(repdb_files) > 0) {
+      bundle_repdb_dir = file.path(bundle_dir, "repdb")
+      dir.create(bundle_repdb_dir, recursive = TRUE, showWarnings = FALSE)
+
+      ok = file.copy(
+        from = repdb_files,
+        to = file.path(bundle_repdb_dir, basename(repdb_files)),
+        overwrite = TRUE,
+        copy.mode = TRUE,
+        copy.date = TRUE
       )
-      rcode[1] = cache_load_code
-    }
-  }
-  # --------------------------------------------
 
-  if (filtered) {
-    filter_code = drf_get_filter_code(pid, drf)
-    if (length(filter_code) > 0) {
-      rcode = c(rcode, filter_code)
+      if (!all(ok)) {
+        stop("Could not copy all selected repdb parcels to the Github Actions bundle.")
+      }
     }
   }
 
-  # Simple execution of R code
-  rcode_call = parse(text = paste0(rcode, collapse="\n"))
-  exec_env$project_dir = drf$project_dir
-  eval(rcode_call, envir = exec_env)
+  if (isTRUE(include_generated_mod_files)) {
+    if (is.null(generated_mod_files)) {
+      generated_mod_files = rb_find_generated_mod_files(
+        project_dir = project_dir,
+        ignore_repbox_files = ignore_repbox_generated_files,
+        compare_relative_path = compare_mod_relative_path,
+        treat_same_name_same_size_as_existing = treat_same_name_same_size_as_existing,
+        only_generated = TRUE
+      )
+    }
 
-  # Crucial: Always return the manipulated data frame explicitly
-  exec_env$data
+    if (isTRUE(filter_mod_by_intermediate) && NROW(generated_mod_files) > 0) {
+      im_file = file.path(project_dir, "repbox", "stata", "intermediate_data.Rds")
+      if (file.exists(im_file)) {
+        im_df = readRDS(im_file)
+        if (NROW(im_df) > 0 && "file_path" %in% names(im_df)) {
+          keep = generated_mod_files$rel_path %in% im_df$file_path
+          generated_mod_files = generated_mod_files[keep, , drop = FALSE]
+        } else {
+          generated_mod_files = generated_mod_files[0, , drop = FALSE]
+        }
+      } else {
+        generated_mod_files = generated_mod_files[0, , drop = FALSE]
+      }
+    }
+
+    if (NROW(generated_mod_files) > 0) {
+      rb_copy_generated_mod_files_to_dir(
+        project_dir = project_dir,
+        to_dir = file.path(bundle_dir, "mod"),
+        file_df = generated_mod_files,
+        overwrite = TRUE
+      )
+    }
+  }
+
+  # Deprecated root intermediate_data folder mapping retained in case old setups exist.
+  if (dir.exists(file.path(project_dir, "intermediate_data"))) {
+    rb_copy_tree(
+      from = file.path(project_dir, "intermediate_data"),
+      to = file.path(bundle_dir, "intermediate_data"),
+      overwrite = TRUE
+    )
+  }
+
+  file.copy(
+    from = manifest_file,
+    to = file.path(bundle_dir, "stata_remote_manifest.Rds"),
+    overwrite = TRUE,
+    copy.mode = TRUE,
+    copy.date = TRUE
+  )
+
+  invisible(bundle_dir)
 }
 ```
-!END_MODIFICATION drf_get_data repboxDRF/R/drf_run_r.R
 
+!END_MODIFICATION rb_make_gha_stata_bundle in rb_gha.R
 
-!MODIFICATION mrb_test_code_path mrb_test_code_path.R
+Second, make the local import restore `bundle/repdb/*.Rds` into the project’s local `repdb`.
+
+!MODIFICATION rb_import_gha_stata_bundle in rb_gha.R
 scope = "function"
-file = "mrb_test_code_path.R"
-function_name = "mrb_test_code_path"
-description = "Visually mirror the dynamic cache loading behavior in the testing output script so that the `.R` dump correctly reflects what evaluates in R."
----
+file = "/home/rstudio/repbox/repboxRun/R/rb_gha.R"
+function_name = "rb_import_gha_stata_bundle"
+description = "Import bundled repdb parcels such as stata_scalar.Rds back into the local project."
+--------------------------------------------------------------------------------------------------
+
 ```r
-mrb_test_code_path = function(project_dir, runid, parcels, drf, opts=mrb_test_opts()) {
-  restore.point("mrb_test_code_path")
+#' Import a raw Github Actions Stata bundle into a local project
+#'
+#' @export
+rb_import_gha_stata_bundle = function(
+  project_dir,
+  bundle_dir,
+  overwrite = TRUE,
+  verify = TRUE,
+  local_input_zip = NULL,
+  import_mod_files = TRUE,
+  import_intermediate_data = TRUE,
+  restore_intermediate_data_to_mod = TRUE,
+  import_repdb_parcels = TRUE
+) {
+  restore.point("rb_import_gha_stata_bundle")
 
-  path_df = drf$path_df %>% filter(pid == !!runid, runid <= !!runid) %>% arrange(runid)
+  project_dir = normalizePath(project_dir, mustWork = FALSE)
+  bundle_dir = normalizePath(bundle_dir, mustWork = TRUE)
 
-  if (NROW(path_df) == 0) {
-    return(paste0("# No path found in drf$path_df for pid ", runid))
+  manifest_file = file.path(bundle_dir, "stata_remote_manifest.Rds")
+  if (!file.exists(manifest_file)) {
+    manifest_file = file.path(bundle_dir, "repbox", "stata", "stata_remote_manifest.Rds")
   }
 
-  run_df = drf$run_df %>% filter(runid %in% path_df$runid) %>% arrange(runid)
+  manifest = NULL
+  if (file.exists(manifest_file)) {
+    manifest = readRDS(manifest_file)
+  }
 
-  txt_lines = c()
+  if (verify && !is.null(manifest)) {
+    if (!is.na(manifest$artid) && !identical(as.character(manifest$artid), basename(project_dir))) {
+      stop("Bundle artid does not match the local project directory.")
+    }
 
-  for (i in seq_len(NROW(run_df))) {
-    r_id = run_df$runid[i]
-    stata_cmd = run_df$cmdline[i]
-
-    # Format the original Stata command neatly as an R comment
-    stata_cmd_lines = strsplit(stata_cmd, "\n")[[1]]
-    stata_cmd_comment = paste0("# Stata: ", paste0(stata_cmd_lines, collapse = "\n#        "))
-
-    if (r_id == runid) {
-       # This is the final analysis target / regression command.
-
-       # 1. Obtain data filter code (for `if` and `in` syntax)
-       filter_code = drf_get_filter_code(r_id, drf, parcels = parcels)
-
-       # 2. Obtain translated regression code
-       reg_code = mrb_test_reg_r_code(project_dir, r_id, parcels)
-
-       rcode = c(filter_code, reg_code)
-       rcode_str = paste0(rcode, collapse = "\n")
-       if (!nzchar(rcode_str) || all(is.na(rcode_str))) {
-         rcode_str = "# No R translation found/needed"
-       }
-
-       txt_lines = c(txt_lines, stata_cmd_comment, rcode_str, "")
-
-    } else {
-       # Modification or data loading step preceding the target.
-       rcode = run_df$rcode[i]
-       
-       # If this is the FIRST runid in the path, and it has a cache, inject the cache load code
-       if (i == 1 && isTRUE(run_df$has_file_cache[i])) {
-         drf_rel_path = paste0("cached_dta/", basename(run_df$drf_cache_file[i]))
-         rcode = paste0(
-           'data = drf_load_data(project_dir, "', drf_rel_path ,'")\n',
-           'data$stata2r_original_order_idx = seq_len(nrow(data))\n',
-           'assign("has_original_order_idx", TRUE, envir = stata2r::stata2r_env)'
-         )
-       }
-       
-       if (is.null(rcode) || is.na(rcode) || !nzchar(rcode)) {
-         rcode = "# No R translation found/needed"
-       }
-
-       txt_lines = c(txt_lines, stata_cmd_comment, rcode, "")
+    if (!is.null(local_input_zip) && file.exists(local_input_zip) &&
+        !is.null(manifest$input_zip_md5) && !is.na(manifest$input_zip_md5)) {
+      local_md5 = unname(tools::md5sum(local_input_zip))
+      if (!identical(as.character(local_md5), as.character(manifest$input_zip_md5))) {
+        stop("Local supplement ZIP md5 does not match the imported bundle manifest.")
+      }
     }
   }
 
-  paste0(txt_lines, collapse = "\n")
+  stata_from = file.path(bundle_dir, "repbox", "stata")
+  if (!dir.exists(stata_from)) {
+    stop("Bundle does not contain repbox/stata.")
+  }
+
+  rb_copy_tree(
+    from = stata_from,
+    to = file.path(project_dir, "repbox", "stata"),
+    overwrite = overwrite
+  )
+
+  steps_from = file.path(bundle_dir, "steps")
+  if (dir.exists(steps_from)) {
+    rb_copy_dir_contents(
+      from_dir = steps_from,
+      to_dir = file.path(project_dir, "steps"),
+      overwrite = overwrite
+    )
+  }
+
+  problems_from = file.path(bundle_dir, "problems")
+  if (dir.exists(problems_from)) {
+    rb_copy_dir_contents(
+      from_dir = problems_from,
+      to_dir = file.path(project_dir, "problems"),
+      overwrite = overwrite
+    )
+  }
+
+  imported_repdb_files = character(0)
+  if (isTRUE(import_repdb_parcels)) {
+    repdb_from = file.path(bundle_dir, "repdb")
+    if (dir.exists(repdb_from)) {
+      rb_copy_dir_contents(
+        from_dir = repdb_from,
+        to_dir = file.path(project_dir, "repdb"),
+        overwrite = overwrite
+      )
+
+      imported_repdb_files = list.files(
+        path = repdb_from,
+        recursive = TRUE,
+        full.names = FALSE,
+        all.files = TRUE,
+        no.. = TRUE
+      )
+    }
+  }
+
+  imported_mod_files = character(0)
+  if (isTRUE(import_mod_files)) {
+    mod_from = file.path(bundle_dir, "mod")
+    if (dir.exists(mod_from)) {
+      rb_copy_dir_contents(
+        from_dir = mod_from,
+        to_dir = file.path(project_dir, "mod"),
+        overwrite = overwrite
+      )
+      imported_mod_files = list.files(
+        path = mod_from,
+        recursive = TRUE,
+        full.names = FALSE,
+        all.files = TRUE,
+        no.. = TRUE
+      )
+    }
+  }
+
+  imported_intermediate_files = character(0)
+  if (isTRUE(import_intermediate_data)) {
+    intermediate_from = file.path(bundle_dir, "intermediate_data")
+    if (dir.exists(intermediate_from)) {
+      rb_copy_tree(
+        from = intermediate_from,
+        to = file.path(project_dir, "intermediate_data"),
+        overwrite = overwrite
+      )
+      imported_intermediate_files = list.files(
+        path = intermediate_from,
+        recursive = TRUE,
+        full.names = FALSE,
+        all.files = TRUE,
+        no.. = TRUE
+      )
+    }
+  }
+
+  if (isTRUE(restore_intermediate_data_to_mod)) {
+    # If the user explicitly asks, try to map the restored items back to mod
+    # but normally the mod mapping is extracted organically.
+    # rb_restore_latest_intermediate_data_to_mod(project_dir, overwrite = overwrite)
+  }
+
+  invisible(list(
+    project_dir = project_dir,
+    bundle_dir = bundle_dir,
+    manifest = manifest,
+    imported_repdb_files = imported_repdb_files,
+    imported_mod_files = imported_mod_files,
+    imported_intermediate_files = imported_intermediate_files
+  ))
 }
 ```
-!END_MODIFICATION mrb_test_code_path mrb_test_code_path.R
+
+!END_MODIFICATION rb_import_gha_stata_bundle in rb_gha.R
+
+The key new block is this one inside `rb_make_gha_stata_bundle()`, after copying `problems` and before copying generated `mod` files:
+
+```r
+if (length(include_repdb_parcels) > 0) {
+  repdb_files = file.path(
+    project_dir,
+    "repdb",
+    paste0(include_repdb_parcels, ".Rds")
+  )
+  repdb_files = repdb_files[file.exists(repdb_files)]
+
+  if (length(repdb_files) > 0) {
+    bundle_repdb_dir = file.path(bundle_dir, "repdb")
+    dir.create(bundle_repdb_dir, recursive = TRUE, showWarnings = FALSE)
+
+    ok = file.copy(
+      from = repdb_files,
+      to = file.path(bundle_repdb_dir, basename(repdb_files)),
+      overwrite = TRUE,
+      copy.mode = TRUE,
+      copy.date = TRUE
+    )
+
+    if (!all(ok)) {
+      stop("Could not copy all selected repdb parcels to the Github Actions bundle.")
+    }
+  }
+}
+```
+
+With the default
+
+```r
+include_repdb_parcels = c("stata_scalar")
+```
+
+the GHA artifact will contain:
+
+```r
+repdb/stata_scalar.Rds
+```
+
+and the import function will copy it back to:
+
+```r
+<local project>/repdb/stata_scalar.Rds
+```

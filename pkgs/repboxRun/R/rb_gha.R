@@ -434,9 +434,10 @@ rb_copy_dir_contents = function(from_dir, to_dir, overwrite = TRUE) {
 
 #' Create a narrow Github Actions bundle for the raw Stata run
 #'
-#' The bundle contains repbox/stata, steps, problems, a copy
-#' of the raw run manifest, generated or changed files from /mod
-#' that are not already available in /org, and intermediate_data.
+#' The bundle contains repbox/stata, steps, problems, selected repdb
+#' parcels from the raw run, a copy of the raw run manifest, generated
+#' or changed files from /mod that are not already available in /org,
+#' and intermediate_data.
 #'
 #' @export
 rb_make_gha_stata_bundle = function(
@@ -450,7 +451,8 @@ rb_make_gha_stata_bundle = function(
   generated_mod_files = NULL,
   ignore_repbox_generated_files = TRUE,
   compare_mod_relative_path = TRUE,
-  treat_same_name_same_size_as_existing = TRUE
+  treat_same_name_same_size_as_existing = TRUE,
+  include_repdb_parcels = c("stata_scalar")
 ) {
   restore.point("rb_make_gha_stata_bundle")
 
@@ -492,6 +494,32 @@ rb_make_gha_stata_bundle = function(
     )
   }
 
+  if (length(include_repdb_parcels) > 0) {
+    repdb_files = file.path(
+      project_dir,
+      "repdb",
+      paste0(include_repdb_parcels, ".Rds")
+    )
+    repdb_files = repdb_files[file.exists(repdb_files)]
+
+    if (length(repdb_files) > 0) {
+      bundle_repdb_dir = file.path(bundle_dir, "repdb")
+      dir.create(bundle_repdb_dir, recursive = TRUE, showWarnings = FALSE)
+
+      ok = file.copy(
+        from = repdb_files,
+        to = file.path(bundle_repdb_dir, basename(repdb_files)),
+        overwrite = TRUE,
+        copy.mode = TRUE,
+        copy.date = TRUE
+      )
+
+      if (!all(ok)) {
+        stop("Could not copy all selected repdb parcels to the Github Actions bundle.")
+      }
+    }
+  }
+
   if (isTRUE(include_generated_mod_files)) {
     if (is.null(generated_mod_files)) {
       generated_mod_files = rb_find_generated_mod_files(
@@ -528,7 +556,7 @@ rb_make_gha_stata_bundle = function(
     }
   }
 
-  # Deprecated root intermediate_data folder mapping (retained in case old setups exist)
+  # Deprecated root intermediate_data folder mapping retained in case old setups exist.
   if (dir.exists(file.path(project_dir, "intermediate_data"))) {
     rb_copy_tree(
       from = file.path(project_dir, "intermediate_data"),
@@ -560,7 +588,8 @@ rb_import_gha_stata_bundle = function(
   local_input_zip = NULL,
   import_mod_files = TRUE,
   import_intermediate_data = TRUE,
-  restore_intermediate_data_to_mod = TRUE
+  restore_intermediate_data_to_mod = TRUE,
+  import_repdb_parcels = TRUE
 ) {
   restore.point("rb_import_gha_stata_bundle")
 
@@ -620,6 +649,26 @@ rb_import_gha_stata_bundle = function(
     )
   }
 
+  imported_repdb_files = character(0)
+  if (isTRUE(import_repdb_parcels)) {
+    repdb_from = file.path(bundle_dir, "repdb")
+    if (dir.exists(repdb_from)) {
+      rb_copy_dir_contents(
+        from_dir = repdb_from,
+        to_dir = file.path(project_dir, "repdb"),
+        overwrite = overwrite
+      )
+
+      imported_repdb_files = list.files(
+        path = repdb_from,
+        recursive = TRUE,
+        full.names = FALSE,
+        all.files = TRUE,
+        no.. = TRUE
+      )
+    }
+  }
+
   imported_mod_files = character(0)
   if (isTRUE(import_mod_files)) {
     mod_from = file.path(bundle_dir, "mod")
@@ -668,6 +717,7 @@ rb_import_gha_stata_bundle = function(
     project_dir = project_dir,
     bundle_dir = bundle_dir,
     manifest = manifest,
+    imported_repdb_files = imported_repdb_files,
     imported_mod_files = imported_mod_files,
     imported_intermediate_files = imported_intermediate_files
   ))
