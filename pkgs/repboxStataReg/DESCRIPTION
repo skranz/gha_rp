@@ -1,0 +1,18 @@
+Package: repboxStataReg
+Type: Package
+Title: Extraction of regression information from Stata reproduction run (before metareg)
+Version: 0.1.0
+Authors@R: c(
+    person(
+      "Sebastian", "Kranz",
+      email = "sebastian.kranz@uni-ulm.de",
+      role = c("aut", "cre")
+    )
+  )
+Description: Core part of previous huge repboxReg package. 
+  Only the functionality related to the original reproduction
+  run, no metareg stuff.
+License: GPL >= 2.0
+Encoding: UTF-8
+LazyData: true
+Depends: repboxDB, repboxUtils, repboxDRF, repboxStata

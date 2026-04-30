@@ -1,0 +1,29 @@
+name: file_type_info
+
+descr: |
+  General info about specific file types in supplement
+
+
+unique_index:
+  main_index: [artid, file_type]
+
+fields:
+  artid:
+
+  file_type:
+    descr: |
+      Lower case version of file extension of the script file.
+
+  num_files:
+    type: num
+    descr: |
+      Number of files of that particular type
+
+  mb:
+    type: num
+    descr: |
+      Total size in MB of all files of that type
+
+  latest_timestamp:
+    descr: |
+      The latest timestamp of all files of that type

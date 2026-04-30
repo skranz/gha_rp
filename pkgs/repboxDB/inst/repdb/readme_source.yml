@@ -1,0 +1,25 @@
+name: readme_source
+
+descr: |
+  Text of potential README files in reproduction package
+
+unique_index:
+  main_index: [file_path]
+
+fields:
+
+  file_path:
+    descr: |
+      The path to the code file. A relative path starting at the supplements
+      main directory.
+
+  file_name:
+    descr: |
+      File name without path
+
+  score:
+    descr: A score provided by our heuristic on how well the file name fits a README file
+    type: int
+
+  readme_text:
+    descr: The content of the README file as a string.

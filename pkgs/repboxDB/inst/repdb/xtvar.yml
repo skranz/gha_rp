@@ -1,0 +1,22 @@
+name: xtvar
+
+descr: |
+  Information on time series and cross section variables
+  as set in Stata code using xtset or tsset.
+  That info is stored for some commands (mainly regression)
+  in our reproduction run.
+
+unique_index:
+  main_index: [runid]
+
+fields:
+
+  runid:
+    type: int
+
+  timevar:
+
+  panelvar:
+
+  tdelta:
+

@@ -1,0 +1,20 @@
+# Fields with one entry per regression
+
+name: r_trans
+
+descr: |
+  Translation of Stata commands to R that can be used
+  to prepare data in metareg studies.
+
+  Currently only provided for commands that load or modify
+  data and are used for some regression.
+
+unique_index:
+  main_index: [runid]
+
+fields:
+
+  runid:
+    type: int
+
+  rcode:

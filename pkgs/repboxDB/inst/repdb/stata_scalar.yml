@@ -1,0 +1,17 @@
+name: stata_scalars
+
+descr: |
+  Stored values of scalar variables in Stata runs
+unique_index:
+  main_index: [runind]
+
+fields:
+  runid:
+    type: int
+
+  scalar_var:
+
+  scalar_val:
+
+  scalar_num_val:
+    type: numeric

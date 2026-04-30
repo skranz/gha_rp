@@ -114,7 +114,8 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwri
   repboxGithub::copy_r_package("/home/rstudio/repbox/repboxRun",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite = TRUE)
   repboxGithub::copy_r_package("/home/rstudio/repbox/repboxStata",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite=TRUE)
   repboxGithub::copy_r_package("/home/rstudio/repbox/repboxUtils",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite=TRUE)
-
+  repboxGithub::copy_r_package("/home/rstudio/repbox/repboxDB",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite=TRUE)
+  repboxGithub::copy_r_package("/home/rstudio/repbox/repboxStataReg",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite=TRUE)
 
     #repboxGithub::copy_r_package("/home/rstudio/repbox/GithubActions",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs")
   # ------------------------------------------------------------

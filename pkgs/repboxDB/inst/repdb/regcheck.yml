@@ -1,0 +1,85 @@
+name: regcheck
+
+descr: |
+  Check metaregBase reproduction of regression results
+
+  We compare 3 variants:
+  so: original replication using the repboxStata code injection
+  sb: metaregBase Stata replication
+  rb: metaregBase R replication
+
+unique_index:
+  main_index: [runid]
+
+fields:
+  runid:
+    type: int
+
+  reg_ok:
+    type: bool
+    descr: Is the regression fully ok, i.e. so, sb and rb ran and yield same results.
+
+  so_raw_did_run:
+    type: bool
+    descr: Did the original Stata reproduction of the regression run.
+
+  sb_raw_did_run:
+    type: bool
+    descr: Did the metareg base Stata replication of the regression run
+
+  so_did_run:
+    type: bool
+    descr: Did the original Stata reproduction run and all its repdb parcels generated.  Note that the parcels may fail if R translation to get data fails.
+
+  sb_did_run:
+    type: bool
+    descr: Did the metareg base Stata replication run all its repdb parcels. Note that the parcels may fail if R translation to get data fails.
+  rb_did_run:
+    type: bool
+    descr: Did the metareg base R replication of the regression run without error
+
+  sb_so_identical:
+    type: bool
+    descr: Are the sb and so results identical?
+
+  rb_sb_coef_same:
+    type: bool
+    descr: Are the rb and sb coefficients the same within 1% tolerance
+
+  rb_sb_coef_max_dev:
+    type: num
+    descr: maximum relative deviation between coefficients of rb and sb run
+
+  rb_sb_se_same:
+    type: bool
+    descr: Are the sb and so standard errors the same within 1% tolerance
+
+  rb_sb_se_max_dev:
+    type: num
+    descr: maximum relative deviation between standard errors of rb and sb run
+
+  repair_code:
+    default: ""
+    descr: |
+      Was the regression repaired or attempted to be repaired. Currently:
+      repair_code = "": no repair
+      repair_code = "c" cache regression data
+
+  problem:
+    descr: |
+      A text describing potential problems. If the metaregBase analysis did not run,
+      it contains the error message.
+
+  comment:
+    descr: |
+      Optional additional comment. Will typically be empty.
+      The comment can either provide additional information for
+      a problem that may help debugging or note a point
+      that shall not be considered a problem but
+      may be informative nevertheless.
+      Avoid excessive long comments since regcheck will be
+      typically stored inside the core parcel of
+      metareg studies.
+
+
+

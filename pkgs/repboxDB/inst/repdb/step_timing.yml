@@ -1,0 +1,15 @@
+name: step_timing
+
+descr: |
+  How long did the different steps of repbox_run_project take?
+
+index:
+  main_index: [artid]
+
+fields:
+  artid:
+
+  step:
+
+  sec:
+    type: num

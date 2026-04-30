@@ -1,0 +1,63 @@
+name: stata_do_run_info
+
+descr: |
+  Run information for every Stata do file
+
+unique_index:
+  main_index: [artid, file_path]
+
+fields:
+  artid:
+
+  file_path:
+
+  script_num:
+    type: int
+
+  is_included:
+    type: bool
+
+  does_include:
+    type: bool
+    descr: Does the do file include another do file?
+
+  runtime:
+    type: num
+    descr: Total runtime of all command runs in this do file
+
+  analyzed:
+    type: bool
+    descr: Was there at least a static analysis of the do file?
+
+  timeout:
+    type: bool
+
+  was_run:
+    type: bool
+    descr: Was the do file run
+
+  num_runs:
+    type: int
+    descr: Number of times any command was called
+
+  num_runs_ok:
+    type: int
+
+  num_runs_no_dat:
+    type: int
+
+  num_runs_err:
+    type: int
+    descr: Number of runs with an error
+
+  num_load_data:
+    type: int
+    descr: Number of runs that (attempt to) load a data set
+
+  num_load_data_err:
+    type: int
+    descr: Number of data set loadings with error
+
+  has_parse_err:
+    type: bool
+    descr: Was there a parsing error for the do file.

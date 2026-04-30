@@ -1,0 +1,37 @@
+name: data_write
+
+descr: |
+  Information about data usage (load or save) in any script
+
+unique_index:
+  main_index: [artid, file_path, script_num]
+
+fields:
+  artid:
+
+  file_base:
+
+  file_type:
+    descr: |
+      Lower case version of file extension of the script file.
+
+  script_num:
+    type: int
+
+  times_write_ok:
+    type: int
+    descr: How often was the data set file loaded without error
+
+  times_write_err:
+    type: int
+    descr: How often was the data set file attempted to be loaded with error?
+
+
+  from_parse:
+    type: bool
+    descr: Is (at least one) file usage determined at parse time?
+
+  from_run:
+    type: bool
+    descr: Is ()at least one) the usage determined at run time?
+
