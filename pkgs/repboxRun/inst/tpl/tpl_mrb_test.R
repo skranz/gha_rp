@@ -33,6 +33,7 @@ drf = repboxDRF::drf_load(project_dir)
 mrb = mrb_init(project_dir)
 if (!FALSE) {
   mrb = mrb_full_stata_script(mrb)
+  mrb_clear_stata_reg_out(project_dir)
   mrb = mrb_run_stata_script(mrb)
   mrb = mrb_agg_stata(mrb)
 }

@@ -6,21 +6,21 @@ repbox_problem_opts = function(project_dir, fail_action="error") {
   getOption("repbox.problem.options")
 }
 
-repbox_step_problems = function() {
-  getOption("repbox.step.problems")
+repbox_runid_problems = function() {
+  getOption("repbox.runid.problems")
 }
 
-repbox_problem_set_step = function(step=NA_integer_) {
-  options(repbox.problem.step = step)
-  if (!is.na(step)) {
-    options(repbox.step.problems = list())
+repbox_problem_set_runid = function(runid=NA_integer_) {
+  options(repbox.problem.runid = runid)
+  if (!is.na(runid)) {
+    options(repbox.runid.problems = list())
   }
 }
 
-repbox_problem_get_step = function() {
-  step = getOption("repbox.problem.step")
-  if (is.null(step)) step = NA_integer_
-  step
+repbox_problem_get_runid = function() {
+  runid = getOption("repbox.problem.runid")
+  if (is.null(runid)) runid = NA_integer_
+  runid
 }
 
 
@@ -49,7 +49,7 @@ repbox_get_current_project_dir = function() {
 }
 
 #' A function that deals with failures depending on the on_fail action
-repbox_problem = function(msg, type, fail_action=opts$fail_action, project_dir=opts$project_dir,  extra=list(),metaid=opts$metaid, step=repbox_problem_get_step(), opts=repbox_problem_opts()) {
+repbox_problem = function(msg, type, fail_action=opts$fail_action, project_dir=opts$project_dir,  extra=list(),metaid=opts$metaid, runid=repbox_problem_get_runid(), opts=repbox_problem_opts()) {
   restore.point("repbox_problem")
 
 
@@ -62,7 +62,7 @@ repbox_problem = function(msg, type, fail_action=opts$fail_action, project_dir=o
   if (is.null(project_dir)) {
     stop("project_dir not specfied")
   }
-  prob = list(type=type,msg=msg, metaid=metaid, step=step, extra=extra)
+  prob = list(type=type,msg=msg, metaid=metaid, runid=runid, extra=extra)
 
   hash = digest::digest(prob)
 
@@ -78,22 +78,22 @@ repbox_problem = function(msg, type, fail_action=opts$fail_action, project_dir=o
   if (!dir.exists(problem_dir)) dir.create(problem_dir,recursive = TRUE)
 
   short_hash = substr(hash, 1,8)
-  if (is.na(step)) {
+  if (is.na(runid)) {
     #num_files = length(list.files(problem_dir))
     #prob_num = num_files +1
     saveRDS(prob, paste0(problem_dir,"/problem_", type,"__", short_hash, ".Rds"))
   } else {
-    saveRDS(prob, paste0(problem_dir,"/step_problem_", step,"__", type,"__", short_hash, ".Rds"))
+    saveRDS(prob, paste0(problem_dir,"/runid_problem_", runid,"__", type,"__", short_hash, ".Rds"))
   }
 
-  if (!is.na(step)) {
-    step_problems = getOption("repbox.step.problems")
-    if (is.null(step_problems)) {
-      step_problems = list(prob)
+  if (!is.na(runid)) {
+    runid_problems = getOption("repbox.runid.problems")
+    if (is.null(runid_problems)) {
+      runid_problems = list(prob)
     } else {
-      step_problems = c(step_problems, list(prob))
+      runid_problems = c(runid_problems, list(prob))
     }
-    options(repbox.step.problems = step_problems)
+    options(repbox.runid.problems = runid_problems)
   }
 
   if (fail_action=="error") {
@@ -107,7 +107,7 @@ repbox_problem = function(msg, type, fail_action=opts$fail_action, project_dir=o
 }
 
 
-try_catch_repbox_problems <- function(expr,project_dir, warn_action="msg", err_action="msg") {
+try_catch_repbox_problems <- function(expr,project_dir, warn_action="msg", err_action="msg", runid=NULL, msg_prefix="", err_val=NULL) {
   warn_li = list()
   err <- NULL
   value <- withCallingHandlers(
@@ -120,13 +120,14 @@ try_catch_repbox_problems <- function(expr,project_dir, warn_action="msg", err_a
     })
 
   if (!is.null(err)) {
-    repbox_problem(err,"error", fail_action=err_action, project_dir=project_dir)
+    value = err_val
+    repbox_problem(paste0(msg_prefix,err),"error", fail_action=err_action, project_dir=project_dir, runid=runid)
   }
   for (w in warn_li) {
-    repbox_problem(w,"warning", fail_action=warn_action, project_dir=project_dir)
+    repbox_problem(paste0(msg_prefix,w),"warning", fail_action=warn_action, project_dir=project_dir, runid=runid)
   }
 
-  list(value=value, warnings=warn_li, error=err)
+  list(value=value, warnings=warn_li, error=err, has_err = !is.null(err))
 }
 
 

@@ -17,7 +17,7 @@ example = function() {
     overwrite = FALSE,
     create_mod_dir = TRUE,
     capture_reg_info = TRUE,
-    capture_scalar_info = TRUE
+    capture_scalars = TRUE
   )
 
   rb = rb_postprocess_stata_reproduction(
@@ -80,10 +80,10 @@ rb_run_stata_reproduction_raw = function(
   overwrite = FALSE,
   create_mod_dir = TRUE,
   capture_reg_info = TRUE,
-  capture_scalar_info = TRUE,
+  capture_scalars = TRUE,
   stata_opts = repbox_stata_opts(
     extract.reg.info = capture_reg_info,
-    extract.scalar.vals = capture_scalar_info
+    extract.scalar.vals = capture_scalars
   ),
   input_zip = NULL,
   manifest_extra = list()
@@ -125,7 +125,7 @@ rb_run_stata_reproduction_raw = function(
   dir.create(repbox_stata_dir, recursive = TRUE, showWarnings = FALSE)
 
   stata_opts$extract.reg.info = isTRUE(capture_reg_info)
-  stata_opts$extract.scalar.vals = isTRUE(capture_scalar_info)
+  stata_opts$extract.scalar.vals = isTRUE(capture_scalars)
 
   parcels = repbox_project_run_stata(
     project_dir = project_dir,
@@ -219,14 +219,14 @@ rb_run_stata_reproduction = function(
   overwrite = FALSE,
   create_mod_dir = TRUE,
   capture_reg_info = TRUE,
-  capture_scalar_info = TRUE,
+  capture_scalars = TRUE,
   build_run_info = TRUE,
   build_do_run_info = TRUE,
   build_reg_info = capture_reg_info,
   build_drf = build_reg_info,
   stata_opts = repbox_stata_opts(
     extract.reg.info = capture_reg_info,
-    extract.scalar.vals = capture_scalar_info
+    extract.scalar.vals = capture_scalars
   ),
   input_zip = NULL,
   manifest_extra = list()
@@ -246,7 +246,7 @@ rb_run_stata_reproduction = function(
       overwrite = overwrite,
       create_mod_dir = create_mod_dir,
       capture_reg_info = capture_reg_info,
-      capture_scalar_info = capture_scalar_info,
+      capture_scalars = capture_scalars,
       stata_opts = stata_opts,
       input_zip = input_zip,
       manifest_extra = manifest_extra

@@ -32,5 +32,5 @@ get.regcmds = function() {
 }
 
 repbox_always_cache_cmd = function() {
-  c("merge")
+  c("merge","joinby")
 }

@@ -6,6 +6,24 @@ remove.dir = function(dir.to.be.removed, recursive=TRUE, must.contain = "/projec
   unlink(dir.to.be.removed,recursive = recursive)
 }
 
+rb_remove_project_dirs = function(project_dir, clear_drf=clear_all, clear_mrb=clear_all, clear_repbox=clear_all, clear_repdb=clear_all, clear_problems=clear_all, clear_all=FALSE, must.contain="/projects") {
+  if (clear_drf) {
+    remove.dir(file.path(project_dir,"drf"), must.contain = must.contain)
+  }
+  if (clear_mrb) {
+    remove.dir(file.path(project_dir,"metareg/base"), must.contain = must.contain)
+  }
+  if (clear_repbox) {
+    remove.dir(file.path(project_dir,"repbox"), must.contain = must.contain)
+  }
+  if (clear_repdb) {
+    remove.dir(file.path(project_dir,"repdb"), must.contain = must.contain)
+  }
+  if (clear_problems) {
+    remove.dir(file.path(project_dir,"problems"), must.contain = must.contain)
+  }
+}
+
 rb_has_complete_mod_dir = function(rb,project_dir=rb$project_dir,...) {
   rb_has_complete_org_dir(rb=rb, org_dir=file.path(project_dir, "mod"))
 }

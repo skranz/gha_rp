@@ -30,6 +30,14 @@ read_rds_or_null = function (file) {
     readRDS(file)
 }
 
+#' Saves an RDS file and creates directory of missing
+#' @export
+save_rds_create_dir = function(x, file) {
+  dir = dirname(file)
+  if (!dir.exists(dir)) dir.create(dir, recursive = TRUE)
+  saveRDS(x, file)
+}
+
 copy_into_list <- function(source = parent.frame(), dest = list(), exclude = NULL) {
   # Get all objects in the source environment
   all_vars <- ls(envir = source, all.names = TRUE)
@@ -111,13 +119,13 @@ remove.all.files.in.dir = function(clear.dir, recursive=FALSE) {
 }
 
 is_empty = function(x) {
-  if (is.null(x) | all(is.na(x))) return(TRUE)
+  if (is.null(x) | all(is.na(x)) | length(x)==0) return(TRUE)
   if (isTRUE(x=="")) return(TRUE)
   return(FALSE)
 }
 
 is.empty = function(x) {
-  if (is.null(x) | all(is.na(x))) return(TRUE)
+  if (is.null(x) | all(is.na(x)) | length(x)==0) return(TRUE)
   if (isTRUE(x=="")) return(TRUE)
   return(FALSE)
 }
