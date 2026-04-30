@@ -120,7 +120,7 @@ include_files = '''
 [[gha_test_project]]
 
 include_files = '''
-/home/rstudio/repbox/projects/gha_test/run/*.R
+/home/rstudio/repbox/projects/gha_test/run/run_gha.R
 '''
 
 
