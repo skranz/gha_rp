@@ -42,6 +42,11 @@ fields:
     type: bool
     descr: Are the sb and so results identical?
 
+  sb_so_coef_max_dev:
+    type: num
+    descr: maximum relative deviation between coefficients of sb and so run
+
+
   rb_sb_coef_same:
     type: bool
     descr: Are the rb and sb coefficients the same within 1% tolerance

@@ -64,7 +64,7 @@ rb_run_scripts = function(project_dirs, tpl_names) {
 }
 
 
-rb_deploy_run_tpl = function(project_dir, tpl_names = NULL,overwrite=FALSE, args = list(overwrite=overwrite)) {
+rb_deploy_run_tpl = function(project_dir, tpl_names = NULL,overwrite=FALSE, args = list(overwrite=overwrite), also_toml=TRUE) {
   restore.point("rb_deploy_run_tpl")
   project_dir = normalizePath(project_dir)
   tpl_dir = system.file("tpl", package="repboxRun")
@@ -94,7 +94,12 @@ rb_deploy_run_tpl = function(project_dir, tpl_names = NULL,overwrite=FALSE, args
 
   }
   cat("\nGenerated ", length(tpl_names), " run files in ", run_dir, "\n")
+
+  if (also_toml)
+    rb_deploy_f2p_toml(project_dir, overwrite = overwrite)
+
   invisible(tpl_name)
+
 }
 
 

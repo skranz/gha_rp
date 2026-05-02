@@ -46,7 +46,7 @@ repa.pos.df = function(txt, oline.offset=0) {
   restore.point("repa.pos.df")
 
   txt = iconv(txt, from = "UTF-8", to = "UTF-8", sub = "?")
-  txt[is.na(txt)] = ""
+  #txt[is.na(txt)] = ""
 
   ltxt = stringi::stri_trans_tolower(txt)
 
