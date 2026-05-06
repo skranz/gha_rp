@@ -37,8 +37,11 @@ run_all_post_gha = function() {
   cat("\nrb_run_mr_base\n")
   rb = rb_run_mr_base(rb, overwrite=overwrite)
 
-  # Write report
+  # Write reports
   rb_report_md(project_dir=project_dir)
+  library(repboxReportDo)
+  repboxReportDo::rrd_html_do(project_dir, parcels=rb$parcels)
+  #repboxReportDo::rrd_plain_do(project_dir, parcels=mrb$parcels)
 
 }
 
