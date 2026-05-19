@@ -1,0 +1,36 @@
+name: data_file
+
+descr: |
+  Data set files in repository
+
+unique_index:
+  main_index: [artid, file_path]
+
+fields:
+  artid:
+
+  file_path:
+
+
+  file_type:
+    descr: |
+      Lower case version of file extension of the script file.
+
+  mb:
+    type: num
+    descr: |
+      File size in MB
+
+  timestamp:
+    descr: |
+      Timestamp of the file
+
+  exists_org:
+    type: bool
+    descr: |
+      Does the file already exist in the original supplement?
+
+  exists_final:
+    type: bool
+    descr:
+      Does the file exist in the final version of the supplement, after all code was run?

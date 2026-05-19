@@ -1,0 +1,25 @@
+so:
+  descr: |
+    Original Stata reproduction
+
+sb:
+  descr: |
+    Basic Stata reproduction using metareg
+
+sb_mfx:
+  descr: |
+    Marginal effects at mean for basic stata reproduction computed with margins command.
+    Exists for common non-linear models like probit, logit...
+  copy_from_default: sb
+  own_tables: [regcoef]
+
+sb_firststage_1:
+  descr: |
+    First stage regression if sb was ivreg2 command with option to show first stage regression
+    Will then be shown in some articles.
+  copy_from_default: sb
+  own_tables: [regcoef, regscalar, regmacro, reg]
+
+sb_firststage_2:
+  copy_from_default: sb
+  own_tables: [regcoef, regscalar, regmacro, reg]
