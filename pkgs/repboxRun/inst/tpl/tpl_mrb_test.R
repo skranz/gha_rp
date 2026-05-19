@@ -1,0 +1,48 @@
+repboxRun::repbox_load_libs()
+
+# Should point to this project dir
+project_dir = rb_get_project_dir("{{project_dir}}")
+run_test_file =
+report_file = file.path(project_dir, "test_report/test_report.Rmd")
+overwrite = {{overwrite}}
+
+if (FALSE) {
+  options(warn=1)
+  opts=mrb_test_opts(data_head_rows = 10, show_org_data=FALSE, show_pre_reg_data = FALSE, data_width=100, max_cases = 10, data_add_org_row=TRUE)
+  metaregBase::mrb_run_as_test(project_dir = project_dir,file.path(project_dir, "run/run_mrb_test.R"), opts=opts)
+  rstudioapi::navigateToFile(file.path(project_dir, "test_report/test_report.Rmd"))
+  rstudioapi::filesPaneNavigate(project_dir)
+
+  # Extra debugging info for a given runid (if report stopped due to error)
+  if (FALSE)
+    mrb_runid_test_files(project_dir, runid=127)
+}
+
+repboxRun::rb_remove_project_dirs(project_dir, clear_all=TRUE)
+rb = rb_new(project_dir)
+if (!FALSE) {
+  rb = rb_update_file_info_parcel(rb, overwrite=!FALSE,assume_org_complete = TRUE)
+  rb = rb_update_script_parcels(rb, overwrite=!FALSE)
+  rb = rb_update_static_code_analysis(rb, overwrite = !FALSE)
+
+  rb = rb_create_mod_dir(rb)
+  rb = rb_run_stata_reproduction(rb, overwrite=!FALSE)
+}
+
+
+drf = repboxDRF::drf_load(project_dir)
+drf_clear_mcache()
+mrb = mrb_init(project_dir,with_try = TRUE)
+if (!FALSE) {
+  options(warn=2)
+  mrb = mrb_full_stata_script(mrb)
+  mrb = mrb_run_stata_script(mrb)
+  mrb$drf = repboxDRF:::drf_apply_caches(mrb$drf)
+  mrb = mrb_agg_stata(mrb)
+
+}
+mrb = mrb_make_so_parcels(mrb)
+mrb = mrb_run_r_base(mrb)
+mrb = mrb_run_r_reg(mrb)
+mrb = mrb_make_regcheck_parcel(mrb)
+mrb = mrb_repair_failed_runs(mrb = mrb)
