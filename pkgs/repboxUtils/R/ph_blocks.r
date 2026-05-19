@@ -289,13 +289,13 @@ str.blocks.pos.starting.with = function(
 }
 
 
-stepwise.blocks.to.placeholder = function(txt, ph.df, stop.on.error=FALSE) {
+stepwise.blocks.to.placeholder = function(txt, ph.df, stop.on.error=FALSE, ph.prefix="#~br", start="(", end=")") {
   restore.point("stepwise.blocks.to.placeholder")
   # Set brackets () into ph
   txt = sep.lines(txt)
   str = txt
   for (i in seq_len(NROW(txt))) {
-    pho = try(blocks.to.placeholder(txt[i], start=c("("), end=c(")"), ph.prefix = "#~br"),silent = TRUE)
+    pho = try(blocks.to.placeholder(txt[i], start=start, end=end, ph.prefix = ph.prefix),silent = TRUE)
     if (is(pho,"try-error")) {
       if (stop.on.error) {
         stop(paste0(as.character(pho),"\n. Stopped function."))
