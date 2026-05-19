@@ -1,0 +1,12 @@
+Package: repboxDB
+Type: Package
+Title: Functions for exported repbox data
+Version: 0.1
+Author: Sebastian Kranz (Ulm University)
+Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
+Description: Functions for exported repbox data
+License: GPL >= 3.0
+Remotes: skranz/stringtools, skranz/restorepoint
+Depends: dplyr, restorepoint, stringtools, stringi, yaml, devtools
+Encoding: UTF-8
+LazyData: true
