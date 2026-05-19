@@ -19,3 +19,24 @@ fields:
 
   mod_type:
 
+name: r_code_mod
+
+descr: |
+  Info about performed code modifications in R.
+
+fields:
+  script_num:
+    type: int
+
+  mod_num:
+    type: int
+
+  callid:
+    type: int
+
+  fun:
+
+  arg:
+
+  mod_type:
+

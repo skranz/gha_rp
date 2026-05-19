@@ -13,3 +13,18 @@ fields:
   problem_type:
 
   problem_descr:
+name: problem
+
+descr: |
+  Coarse information on general problems that occured in the analysis.
+  Ideally all of them will be mitigated in future repbox versions.
+
+index:
+  main_index: [artid]
+
+fields:
+  artid:
+
+  problem_type:
+
+  problem_descr:
