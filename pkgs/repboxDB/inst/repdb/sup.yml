@@ -1,0 +1,47 @@
+name: sup
+
+descr: |
+  Summary info about the supplement (other summary info is in art)
+
+unique_index:
+  main_index: [artid]
+
+fields:
+  artid:
+
+  license_type:
+    descr: |
+      Standardizes short form of license, like CC-BY
+
+  has_license_file:
+    type: bool
+    descr: Is there a license file
+
+  mb:
+    descr: |
+      Total size of all unpacked files
+    type: num
+
+  latest_timestamp:
+    descr:
+      Latest timestamp across all files in the supplement
+
+  has_r:
+    type: bool
+
+  has_stata:
+    type: bool
+
+  sup_version:
+
+  sup_url:
+
+  sup_doi:
+
+  sup_repo:
+    descr: Abbreviation for the repo of the replication package.
+    val_descr:
+      oi: OpenICPSR
+      dv: Dataverse
+      ze: Zenodo
+
