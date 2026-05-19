@@ -19,24 +19,3 @@ fields:
   p:
 
 
-name: regtest
-
-descr: |
-  Results of post regression tests
-
-unique_index:
-  main_index: [runid, variant, testname]
-
-fields:
-  runid:
-    type: int
-
-  variant:
-
-  testname:
-
-  statistic:
-
-  p:
-
-

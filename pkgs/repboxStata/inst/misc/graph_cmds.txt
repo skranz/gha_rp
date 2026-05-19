@@ -8,13 +8,3 @@ distplot
 byhist
 tw
 gr
-graph
-twoway
-scatter
-eclplot
-tsline
-hist
-distplot
-byhist
-tw
-gr

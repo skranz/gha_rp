@@ -11,16 +11,3 @@ fields:
 
   pkg:
 
-name: r_load_pkg
-
-descr: |
-  Info about user specified functions in R.
-
-fields:
-  artid:
-
-  script_num:
-    type: int
-
-  pkg:
-

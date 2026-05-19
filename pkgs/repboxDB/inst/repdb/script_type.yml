@@ -13,18 +13,3 @@ fields:
 
   kb:
     type: num
-name: script_type
-
-descr:
-
-unique_index:
-  main_index: [artid, file_path]
-
-fields:
-  file_type:
-
-  num_files:
-    type: int
-
-  kb:
-    type: num
