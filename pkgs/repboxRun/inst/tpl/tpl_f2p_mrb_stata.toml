@@ -40,25 +40,9 @@ Note that we may omit some files to reduce context size.
 
 {{do_files}}
 
-## Script that runs tests
+## Log of mrb_stata.do run
 
-{{test_script}}
-
-# Test report from running the test script
-
-{{test_report}}
-
-# Some generated parcels in the test run
-
-{{parcels}}
-
-# Some translations of repboxDRF for specific runid where problems occur
-
-{{special_runid}}
-
-# Files in the project's drf directory
-
-{{drf_dir}}
+{{mrb_stata}}
 
 # Format of proposed changes to code  files
 
