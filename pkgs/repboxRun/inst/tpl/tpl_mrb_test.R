@@ -2,8 +2,6 @@ repboxRun::repbox_load_libs()
 
 # Should point to this project dir
 project_dir = rb_get_project_dir("{{project_dir}}")
-run_test_file =
-report_file = file.path(project_dir, "test_report/test_report.Rmd")
 overwrite = {{overwrite}}
 
 if (FALSE) {
@@ -45,4 +43,8 @@ mrb = mrb_make_so_parcels(mrb)
 mrb = mrb_run_r_base(mrb)
 mrb = mrb_run_r_reg(mrb)
 mrb = mrb_make_regcheck_parcel(mrb)
-mrb = mrb_repair_failed_runs(mrb = mrb)
+if (FALSE)
+  mrb = mrb_repair_failed_runs(mrb = mrb)
+library(repboxReportDo)
+repboxReportDo::rrd_html_do(project_dir)
+

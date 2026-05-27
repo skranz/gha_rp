@@ -33,6 +33,7 @@ repdb_list_parcels = function(project_dir, metareg.dir = file.path(project_dir,"
 
 }
 
+
 repdb_load_parcels = function(project_dir, parcel_names, parcels=NULL) {
   restore.point("repdb_load_parcels")
   parcel_names = setdiff(parcel_names, names(parcels))
@@ -45,6 +46,8 @@ repdb_load_parcels = function(project_dir, parcel_names, parcels=NULL) {
   new_parcels = lapply(paths, readRDS)
   names(new_parcels) = parcel_names[use]
 
+
+
   # check old format and stop on error
   for (name in names(new_parcels)){
     parcel = new_parcels[[name]]
@@ -56,4 +59,6 @@ repdb_load_parcels = function(project_dir, parcel_names, parcels=NULL) {
 
   if (length(parcels)==0) return(new_parcels)
   c(parcels, new_parcels)
+
+
 }
