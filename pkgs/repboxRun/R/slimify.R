@@ -122,7 +122,7 @@ slimify.solved.project = function(project_dir, max.org.mb = 10, max.log.mb = 1, 
     slimify$slimify.org = slimify.org | slimify$slimify.org
     slimify$slimify.stata.res = slimify.stata.res | slimify$slimify.stata.res
     slimify$slimify.matching = slimify.matching | slimify$slimify.matching
-    slimify$slimify.cmd = slimify.log | isTRUE(slimify$slimify.cmd)
+    slimify$slimify.cmd = slimify.cmd | isTRUE(slimify$slimify.cmd)
     slimify$max.log.mb = min(c(slimify$max.log.mb, max.log.mb))
     slimify$max.org.mb = min(c(slimify$max.org.mb, max.org.mb))
     slimify$max.stata.res.mb = min(c(slimify$max.stata.res.mb, max.stata.res.mb))

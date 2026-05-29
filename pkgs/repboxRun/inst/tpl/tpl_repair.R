@@ -2,8 +2,8 @@ repboxRun::repbox_load_libs()
 
 # Should point to this project dir
 project_dir = rb_get_project_dir("{{project_dir}}")
-mrb = mrb_repair_failed_runs(project_dir = project_dir)
-repboxReportDo::rrd_html_do(project_dir, parcels=rb$parcels)
+mrb = mrb_repair_via_ignore(project_dir = project_dir)
+repboxReportDo::rrd_html_do(project_dir)
 
 if (FALSE) {
   rstudioapi::filesPaneNavigate(file.path(project_dir,"run"))
