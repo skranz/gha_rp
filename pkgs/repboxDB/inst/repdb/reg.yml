@@ -89,6 +89,22 @@ fields:
       cluster: cluster=myvar
       twoway: cluster1=myvar1;cluster2=myvar2
 
+  weights:
+    descr: |
+      Empty if not a weighted regression, otherwise
+      a single variable name or an expression like '1/var'
+
+  flags:
+    descr: |
+      Additional flags we may store for the regression
+      as a comma separated string. Currently:
+
+      noconst: regression was specified without a constant
+      weights_expr: if we have weights that are not a simple variable but an expression
+      fw: if we have frequence weight (fw)
+      pw: probability weights (pw)
+      weights_non_parseable: if the weights are an expression that we cannot directly parse in R
+
   r2:
     descr: r-squared
     type: num
