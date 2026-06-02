@@ -155,6 +155,8 @@ manifest_extra = list(
 
 
 message("Run stata_inst.do")
+cmd = paste0(stata_bin, " -q do stata_inst.do")
+system(cmd)
 repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
 
 message("Running raw Stata reproduction")
