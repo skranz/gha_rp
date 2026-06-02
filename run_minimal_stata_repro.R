@@ -154,11 +154,15 @@ manifest_extra = list(
 )
 
 
-if (FALSE) {
-  message("Run stata_inst.do")
-  cmd = paste0(stata_bin, " -q do \"", repo_dir,"/stata_inst.do\"")
-  system(cmd)
-  repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
+if (file.exists("stata_cmds_for_install.txt")) {
+  cmds4inst = readLines("stata_cmds_for_install.txt")
+
+  if ("ivreg2" %in% cmds4inst) {
+    message("ivreg2 present: run stata_inst.do")
+    cmd = paste0(stata_bin, " -q do \"", repo_dir,"/stata_inst.do\"")
+    system(cmd)
+    repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
+  }
 }
 
 message("Running raw Stata reproduction")

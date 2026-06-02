@@ -22,6 +22,31 @@ rb_has_ok_gha_run = function(project_dir) {
   file.exists(file.path(project_dir, "gha_log/gha_ok.log"))
 }
 
+rb_find_stata_cmds_for_install = function(project_dir) {
+  parcels = repboxDB::repdb_load_parcels(project_dir, "stata_source")
+  cmds = c("ivreg2")
+
+  if (!is.null(parcels$stata_source)) {
+    txt = paste0(parcels$stata_source$text, collapse="\n")
+  } else {
+    files = list.files(file.path(project_dir, "org"), glob2rx("*.do"), recursive = TRUE, full.names = TRUE)
+    if (length(files)==0) return(NULL)
+    txt = paste0(lapply(files, function(file) {
+      read_utf8(file)
+    }), collapse="\n")
+  }
+
+
+  has = sapply(cmds, function(cmd) {
+    pattern = paste0(stri_c("\\b", cmd, "\\b"))
+    stri_detect_regex(txt, pattern)
+
+  })
+  cmds[has]
+
+
+}
+
 rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwrite=FALSE, timeout = 30*60) {
   restore.point("rb_run_gha_stata_reproduction")
   #stop()
@@ -118,6 +143,13 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwri
   repboxGithub::copy_r_package("/home/rstudio/repbox/repboxStataReg",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs", overwrite=TRUE)
 
     #repboxGithub::copy_r_package("/home/rstudio/repbox/GithubActions",dest_parent_dir = "~/repbox/gha/gha_rp/pkgs")
+
+
+  # 2c Write Stata commands that exist and need special install
+  stata_cmd_need_install = rb_find_stata_cmds_for_install(project_dir)
+  writeLines(stata_cmd_need_install, file.path(gha_repo_dir, "stata_cmds_for_install.txt"))
+
+
   # ------------------------------------------------------------
   # 3. Commit and push the updated gha_rp/run_config.R
   # ------------------------------------------------------------
@@ -132,6 +164,9 @@ rb_run_gha_stata_reproduction = function(project_dir, postprocess=FALSE, overwri
 
 
   GithubActions::gh_update(gha_repo_dir,msg = paste0("Update to ", artid))
+
+
+
 
   # ------------------------------------------------------------
   # 4. Trigger the Github Actions workflow
