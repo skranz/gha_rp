@@ -154,10 +154,12 @@ manifest_extra = list(
 )
 
 
-message("Run stata_inst.do")
-cmd = paste0(stata_bin, " -q do \"", repo_dir,"/stata_inst.do\"")
-system(cmd)
-repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
+if (FALSE) {
+  message("Run stata_inst.do")
+  cmd = paste0(stata_bin, " -q do \"", repo_dir,"/stata_inst.do\"")
+  system(cmd)
+  repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
+}
 
 message("Running raw Stata reproduction")
 rb = repboxRun:::rb_run_stata_reproduction_raw(
