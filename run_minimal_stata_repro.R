@@ -165,6 +165,9 @@ rb = repboxRun:::rb_run_stata_reproduction_raw(
   manifest_extra = manifest_extra
 )
 
+message("Rescuing unarchived intermediate data sets for narrow bundle")
+repboxStata::repbox_rescue_unarchived_intermediate_data(project_dir)
+
 message("Creating narrow Github Actions bundle")
 repboxRun:::rb_make_gha_stata_bundle(
   project_dir = project_dir,
