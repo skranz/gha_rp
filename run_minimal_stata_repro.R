@@ -153,6 +153,10 @@ manifest_extra = list(
   run_config = cfg
 )
 
+
+message("Run stata_inst.do")
+repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
+
 message("Running raw Stata reproduction")
 rb = repboxRun:::rb_run_stata_reproduction_raw(
   rb = rb,
