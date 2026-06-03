@@ -169,7 +169,7 @@ if (file.exists("stata_cmds_for_install.txt")) {
     repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
   }
 } else {
-  cat("\nNo stata_cmds_for_install.txt could be found.)
+  cat("\nNo stata_cmds_for_install.txt could be found.")
 }
 
 message("Running raw Stata reproduction")
