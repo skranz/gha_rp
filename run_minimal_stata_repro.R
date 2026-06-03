@@ -154,8 +154,9 @@ manifest_extra = list(
 )
 
 
-if (file.exists("stata_cmds_for_install.txt")) {
-  cmds4inst = readLines("stata_cmds_for_install.txt")
+cmds4inst_file = file.path(repo_dir,"stata_cmds_for_install.txt")
+if (file.exists(cmds4inst_file)) {
+  cmds4inst = readLines(cmds4inst_file)
   if (length(cmds4inst)==0) {
     cat("\nNo stata_cmds_for_install found in script sources.\n")
   } else {
@@ -169,7 +170,7 @@ if (file.exists("stata_cmds_for_install.txt")) {
     repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
   }
 } else {
-  cat("\nNo stata_cmds_for_install.txt could be found.")
+  cat(paste0("\nNo ", cmds4inst_file, " file be found."))
 }
 
 message("Running raw Stata reproduction")
