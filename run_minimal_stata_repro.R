@@ -156,6 +156,11 @@ manifest_extra = list(
 
 if (file.exists("stata_cmds_for_install.txt")) {
   cmds4inst = readLines("stata_cmds_for_install.txt")
+  if (length(cmds4inst)==0) {
+    cat("\nNo stata_cmds_for_install found in script sources.\n")
+  } else {
+    cat(paste0("\nThe following stata_cmds_for_install found in script sources:", paste0(cmds4inst, collapse=", "),"\n"))
+  }
 
   if ("ivreg2" %in% cmds4inst) {
     message("ivreg2 present: run stata_inst.do")
@@ -163,6 +168,8 @@ if (file.exists("stata_cmds_for_install.txt")) {
     system(cmd)
     repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
   }
+} else {
+  cat("\nNo stata_cmds_for_install.txt could be found.)
 }
 
 message("Running raw Stata reproduction")
