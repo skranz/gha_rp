@@ -1,369 +1,405 @@
-Change **two functions** in:
+Absolutely. Using `stringi` is a great choice here since it handles Perl-compatible regular expressions natively and is often faster and more robust with UTF-8 encodings (which is something you are already actively handling in your parsing).
 
-```r
-/home/rstudio/repbox/repboxRun/R/rb_gha.R
-```
+We will replace the base R `gsub(..., perl=TRUE)` calls with `stringi::stri_replace_all_regex()`.
 
-First, make the GHA bundle include selected `repdb/*.Rds` parcels, especially `stata_scalar.Rds`.
+Here are the revised modification blocks:
 
-!MODIFICATION rb_make_gha_stata_bundle in rb_gha.R
+!MODIFICATION extract.if.in.using repboxStata/R/parse.R
 scope = "function"
-file = "/home/rstudio/repbox/repboxRun/R/rb_gha.R"
-function_name = "rb_make_gha_stata_bundle"
-description = "Copy selected repdb parcels, including stata_scalar.Rds, into the Github Actions result bundle."
----------------------------------------------------------------------------------------------------------------
-
+file = "/home/rstudio/repbox/repboxStata/R/parse.R"
+function_name = "extract.if.in.using"
+description = "Normalize string using stringi to ensure a space before if, in, using if they follow a closing bracket, quote, or placeholder."
+---
 ```r
-#' Create a narrow Github Actions bundle for the raw Stata run
-#'
-#' The bundle contains repbox/stata, steps, problems, selected repdb
-#' parcels from the raw run, a copy of the raw run manifest, generated
-#' or changed files from /mod that are not already available in /org,
-#' and intermediate_data.
-#'
-#' @export
-rb_make_gha_stata_bundle = function(
-  project_dir,
-  bundle_dir = file.path(project_dir, "gha_output", "bundle"),
-  overwrite = TRUE,
-  input_zip = NULL,
-  manifest_extra = list(),
-  include_generated_mod_files = TRUE,
-  filter_mod_by_intermediate = TRUE,
-  generated_mod_files = NULL,
-  ignore_repbox_generated_files = TRUE,
-  compare_mod_relative_path = TRUE,
-  treat_same_name_same_size_as_existing = TRUE,
-  include_repdb_parcels = c("stata_scalar")
-) {
-  restore.point("rb_make_gha_stata_bundle")
+extract.if.in.using = function(str) {
+  restore.point("extract.if.in.using")
+  #str = c("dothings x using x if a>5","", "dothings x if a>5 using x")
 
-  project_dir = normalizePath(project_dir, mustWork = FALSE)
-  if (!file.exists(file.path(project_dir, "repbox", "stata", "repbox_results.Rds"))) {
-    stop("No raw Stata results found in repbox/stata.")
+  # Normalize to ensure space before if/in/using when directly following a closing bracket, quote, or placeholder
+  str = stringi::stri_replace_all_regex(str, "(?<=[\\)\\]\"']|~#)if\\s", " if ")
+  str = stringi::stri_replace_all_regex(str, "(?<=[\\)\\]\"']|~#)in\\s", " in ")
+  str = stringi::stri_replace_all_regex(str, "(?<=[\\)\\]\"']|~#)using\\s", " using ")
+
+  patterns = c(" if ", " in ", " using ")
+  keys = c("if", "in", "using")
+
+  pos = pos.end = matrix(NA, nrow=length(str), ncol=length(keys))
+  #colnames(pos) = keys
+  col = 1
+  for (col in seq_along(keys)) {
+    col.pos = str.locate.first(str, patterns[col])
+    pos[,col] = col.pos[,1]
+    pos.end[,col] = col.pos[,2]
   }
+  pos[is.na(pos)] = -Inf
+  pos.start = pos
+  max.col(pos)
 
-  manifest_file = rb_write_stata_run_manifest(
-    project_dir = project_dir,
-    input_zip = input_zip,
-    extra = manifest_extra
-  )
+  col = 3
+  key.str = replicate(length(keys), rep(NA_character_, length(str)),simplify = FALSE)
+  names(key.str) = keys
 
-  if (dir.exists(bundle_dir) && overwrite) {
-    unlink(bundle_dir, recursive = TRUE, force = TRUE)
-  }
-  dir.create(bundle_dir, recursive = TRUE, showWarnings = FALSE)
-
-  rb_copy_tree(
-    from = file.path(project_dir, "repbox", "stata"),
-    to = file.path(bundle_dir, "repbox", "stata"),
-    overwrite = TRUE
-  )
-
-  if (dir.exists(file.path(project_dir, "steps"))) {
-    rb_copy_tree(
-      from = file.path(project_dir, "steps"),
-      to = file.path(bundle_dir, "steps"),
-      overwrite = TRUE
-    )
-  }
-
-  if (dir.exists(file.path(project_dir, "problems"))) {
-    rb_copy_tree(
-      from = file.path(project_dir, "problems"),
-      to = file.path(bundle_dir, "problems"),
-      overwrite = TRUE
-    )
-  }
-
-  if (length(include_repdb_parcels) > 0) {
-    repdb_files = file.path(
-      project_dir,
-      "repdb",
-      paste0(include_repdb_parcels, ".Rds")
-    )
-    repdb_files = repdb_files[file.exists(repdb_files)]
-
-    if (length(repdb_files) > 0) {
-      bundle_repdb_dir = file.path(bundle_dir, "repdb")
-      dir.create(bundle_repdb_dir, recursive = TRUE, showWarnings = FALSE)
-
-      ok = file.copy(
-        from = repdb_files,
-        to = file.path(bundle_repdb_dir, basename(repdb_files)),
-        overwrite = TRUE,
-        copy.mode = TRUE,
-        copy.date = TRUE
-      )
-
-      if (!all(ok)) {
-        stop("Could not copy all selected repdb parcels to the Github Actions bundle.")
-      }
-    }
-  }
-
-  if (isTRUE(include_generated_mod_files)) {
-    if (is.null(generated_mod_files)) {
-      generated_mod_files = rb_find_generated_mod_files(
-        project_dir = project_dir,
-        ignore_repbox_files = ignore_repbox_generated_files,
-        compare_relative_path = compare_mod_relative_path,
-        treat_same_name_same_size_as_existing = treat_same_name_same_size_as_existing,
-        only_generated = TRUE
-      )
-    }
-
-    if (isTRUE(filter_mod_by_intermediate) && NROW(generated_mod_files) > 0) {
-      im_file = file.path(project_dir, "repbox", "stata", "intermediate_data.Rds")
-      if (file.exists(im_file)) {
-        im_df = readRDS(im_file)
-        if (NROW(im_df) > 0 && "file_path" %in% names(im_df)) {
-          keep = generated_mod_files$rel_path %in% im_df$file_path
-          generated_mod_files = generated_mod_files[keep, , drop = FALSE]
-        } else {
-          generated_mod_files = generated_mod_files[0, , drop = FALSE]
-        }
+  changed = FALSE
+  while(TRUE) {
+    for (col in rev(seq_along(keys))) {
+      has.col = is.finite(pos[,col]) & max.col(pos) == col
+      if (any(has.col)) {
+        changed = TRUE
       } else {
-        generated_mod_files = generated_mod_files[0, , drop = FALSE]
+        next
       }
+      key.str[[col]][has.col] = substring(str[has.col], pos.end[has.col,col]+1) %>% trimws()
+      str[has.col] = substring(str[has.col],1,pos[has.col,col]-1)
+      pos = pos[,-col, drop=FALSE]
+      pos.start[has.col, col] = -Inf
     }
-
-    if (NROW(generated_mod_files) > 0) {
-      rb_copy_generated_mod_files_to_dir(
-        project_dir = project_dir,
-        to_dir = file.path(bundle_dir, "mod"),
-        file_df = generated_mod_files,
-        overwrite = TRUE
-      )
-    }
+    if (!changed) break
+    changed = FALSE
+    pos = pos.start
   }
 
-  # Deprecated root intermediate_data folder mapping retained in case old setups exist.
-  if (dir.exists(file.path(project_dir, "intermediate_data"))) {
-    rb_copy_tree(
-      from = file.path(project_dir, "intermediate_data"),
-      to = file.path(bundle_dir, "intermediate_data"),
-      overwrite = TRUE
-    )
-  }
+  return(list(str = str,parts=key.str))
 
-  file.copy(
-    from = manifest_file,
-    to = file.path(bundle_dir, "stata_remote_manifest.Rds"),
-    overwrite = TRUE,
-    copy.mode = TRUE,
-    copy.date = TRUE
-  )
-
-  invisible(bundle_dir)
 }
 ```
+!END_MODIFICATION extract.if.in.using repboxStata/R/parse.R
 
-!END_MODIFICATION rb_make_gha_stata_bundle in rb_gha.R
-
-Second, make the local import restore `bundle/repdb/*.Rds` into the project’s local `repdb`.
-
-!MODIFICATION rb_import_gha_stata_bundle in rb_gha.R
+!MODIFICATION cmdparts_of_stata_reg repboxUtils/R/cmdpart_reg.R
 scope = "function"
-file = "/home/rstudio/repbox/repboxRun/R/rb_gha.R"
-function_name = "rb_import_gha_stata_bundle"
-description = "Import bundled repdb parcels such as stata_scalar.Rds back into the local project."
---------------------------------------------------------------------------------------------------
-
+file = "/home/rstudio/repbox/repboxUtils/R/cmdpart_reg.R"
+function_name = "cmdparts_of_stata_reg"
+description = "Normalize string using stringi to ensure a space before if and in if they follow a closing bracket, quote, or placeholder."
+---
 ```r
-#' Import a raw Github Actions Stata bundle into a local project
-#'
-#' @export
-rb_import_gha_stata_bundle = function(
-  project_dir,
-  bundle_dir,
-  overwrite = TRUE,
-  verify = TRUE,
-  local_input_zip = NULL,
-  import_mod_files = TRUE,
-  import_intermediate_data = TRUE,
-  restore_intermediate_data_to_mod = TRUE,
-  import_repdb_parcels = TRUE
-) {
-  restore.point("rb_import_gha_stata_bundle")
+cmdparts_of_stata_reg = function(cmdlines) {
+  restore.point("stata_reg_cmdpart")
 
-  project_dir = normalizePath(project_dir, mustWork = FALSE)
-  bundle_dir = normalizePath(bundle_dir, mustWork = TRUE)
+  if (length(cmdlines)==0) return(data.frame(str_row = integer(0), parent=character(0), part=character(0), content=character(0), tag=character(0), counter=integer(0), runid=integer(0)))
 
-  manifest_file = file.path(bundle_dir, "stata_remote_manifest.Rds")
-  if (!file.exists(manifest_file)) {
-    manifest_file = file.path(bundle_dir, "repbox", "stata", "stata_remote_manifest.Rds")
+  str = trimws(cmdlines)
+  # Replace tabs with spaces
+  # Otherwise we wont correctly store the cmd
+  # variable
+  str = gsub("\t"," ", str, fixed=TRUE)
+
+
+  # For some really tricky if conditions or similar
+  # We first replace brackets and quotes by placeholders
+  # reg y x1 if (i==1) | i==2 | inlist(f1, "A" "B") [aw=x1] in 5/25, robust   level( 95  )
+
+  txt = paste0(str, collapse = "\n")
+  pho = try(blocks.to.placeholder(txt, start=c("("), end=c(")"), ph.prefix = "#~br"))
+  if (is(pho,"try-error")) {
+    pho = stepwise.blocks.to.placeholder(str)
   }
 
-  manifest = NULL
-  if (file.exists(manifest_file)) {
-    manifest = readRDS(manifest_file)
+  # Normalize to ensure space before if/in when directly following a closing bracket, quote, or placeholder
+  pho$str = stringi::stri_replace_all_regex(pho$str, "(?<=[\\)\\]\"']|~#)if\\s", " if ")
+  pho$str = stringi::stri_replace_all_regex(pho$str, "(?<=[\\)\\]\"']|~#)in\\s", " in ")
+
+  # In our example we have now
+  # str = " if #~br1~# | i==2 | inlist#~br2~# [aw=x1] in 5/25 , robust"
+  str = strsplit(pho$str,split = "\n")[[1]]
+  if (length(str)==0) str = ""
+  ph.df = pho$ph.df
+
+
+
+  cp = cp_init(str)
+
+  while(TRUE) {
+    cp = cp_jump_ws(cp)
+    cp = cp_add_starts_with(cp,c("quietly:","quiet:","qui:","quietly ","quiet ","qui ", "capture ","capture:","cap ", "cap:","capt ", "capt:"),"pre","cap_quiet",use_counter=TRUE)
+    if (!cp$did_change) break
+  }
+  cp$str
+  substring(cp$str, cp$start)
+
+  # Find colon prefixes before command
+  while(TRUE) {
+    cp = cp_jump_ws(cp)
+    cp = cp_add_left_of(cp,":","pre","",use_counter=TRUE, include_split=TRUE)
+    if (!cp$did_change) break
   }
 
-  if (verify && !is.null(manifest)) {
-    if (!is.na(manifest$artid) && !identical(as.character(manifest$artid), basename(project_dir))) {
-      stop("Bundle artid does not match the local project directory.")
-    }
+  cp$str
+  substring(cp$str, cp$start)
+  # Set brackets () into ph
+  # res = set_cmdpart_block(str, cp, "(", ")","()","",counter=TRUE)
+  # str = res$str; cp = res$cp
 
-    if (!is.null(local_input_zip) && file.exists(local_input_zip) &&
-        !is.null(manifest$input_zip_md5) && !is.na(manifest$input_zip_md5)) {
-      local_md5 = unname(tools::md5sum(local_input_zip))
-      if (!identical(as.character(local_md5), as.character(manifest$input_zip_md5))) {
-        stop("Local supplement ZIP md5 does not match the imported bundle manifest.")
-      }
-    }
-  }
+  cp = cp_jump_ws(cp)
+  cp = cp_add_left_of(cp,"( )|(,)|$|(\\[)", "cmd", "",fixed = FALSE)
 
-  stata_from = file.path(bundle_dir, "repbox", "stata")
-  if (!dir.exists(stata_from)) {
-    stop("Bundle does not contain repbox/stata.")
-  }
 
-  rb_copy_tree(
-    from = stata_from,
-    to = file.path(project_dir, "repbox", "stata"),
-    overwrite = overwrite
-  )
 
-  steps_from = file.path(bundle_dir, "steps")
-  if (dir.exists(steps_from)) {
-    rb_copy_dir_contents(
-      from_dir = steps_from,
-      to_dir = file.path(project_dir, "steps"),
-      overwrite = overwrite
+  cp = cp_jump_ws(cp)
+  cp = cp_add_left_of(cp, "( in )|( if )|(\\[)|,|$", "varlist","", use_counter=FALSE, fixed=FALSE)
+
+
+
+  # varlist ############################################
+
+  # Pass the placeholder dictionary to cp so the sub-functions can resolve brackets
+  cp$ph_df <- ph.df
+  cp <- cmdpart_process_reg_varlists(cp)
+  df = cp$df
+  cp$str
+
+  # weight_str, in_str and if_str #################################
+
+  # Now it is getting a bit more complicated
+  # We want to set if_str, in_str and weight_str
+  # but they may appear in different orders or not at all
+
+  # a) weight_str
+  sub_start = cp$start
+  sub_end = stri_locate_first_fixed(cp$str,",")[,1]-1
+  sub_end = ifelse(is.na(sub_end),nchar(cp$str), sub_end )
+
+  sstr = substring(cp$str, sub_start, sub_end)
+
+  weight_start = stri_locate_first_fixed(sstr, "[")[,1] + sub_start -1
+  weight_end = stri_locate_first_fixed(sstr, "]")[,2] + sub_start -1
+
+
+  str_rows = which(!is.na(weight_start))
+
+  if (length(str_rows)>0) {
+    weight_str = substring(cp$str[str_rows], weight_start[str_rows], weight_end[str_rows])
+
+    cp$str[str_rows] = stringi::stri_sub_replace(cp$str[str_rows], from=weight_start[str_rows], to=weight_end[str_rows], replacement="{{weight_str}}")
+
+
+
+    equal_pos = stringi::stri_locate_first_fixed(weight_str,"=")[,1]
+    has_weight_type = !is.na(equal_pos)
+    weight_type = ifelse(has_weight_type,substring(weight_str,2, equal_pos-1) %>% trimws(), NA)
+    var_start = ifelse(has_weight_type,equal_pos+1,2 )
+    weight_var = substring(weight_str,var_start, nchar(weight_str)-1) %>% trimws()
+    weight_str = ifelse(has_weight_type,
+      paste0("[{{weight_type}}={{weight_var}}]"),
+      paste0("[{{weight_var}}]")
     )
-  }
 
-  problems_from = file.path(bundle_dir, "problems")
-  if (dir.exists(problems_from)) {
-    rb_copy_dir_contents(
-      from_dir = problems_from,
-      to_dir = file.path(project_dir, "problems"),
-      overwrite = overwrite
-    )
-  }
-
-  imported_repdb_files = character(0)
-  if (isTRUE(import_repdb_parcels)) {
-    repdb_from = file.path(bundle_dir, "repdb")
-    if (dir.exists(repdb_from)) {
-      rb_copy_dir_contents(
-        from_dir = repdb_from,
-        to_dir = file.path(project_dir, "repdb"),
-        overwrite = overwrite
-      )
-
-      imported_repdb_files = list.files(
-        path = repdb_from,
-        recursive = TRUE,
-        full.names = FALSE,
-        all.files = TRUE,
-        no.. = TRUE
-      )
+    n_add = NROW(weight_str)*3
+    if (cp$n + n_add >= NROW(cp$df)) {
+      cp$df = cp_add_empty_df(cp$df, n_add*2)
     }
+
+    # 1a) add weight_str
+    new.n = cp$n+length(weight_str)
+    inds = (cp$n+1):new.n
+    cp$df$parent[inds] = "main"
+    cp$df$str_row[inds] = str_rows
+    cp$df$part[inds] = "weight_str"
+    cp$df$content[inds] = weight_str
+    cp$n = new.n
+
+    # 1b) Add weight_var
+    new.n = cp$n+length(weight_str)
+    inds = (cp$n+1):new.n
+    cp$df$parent[inds] = "weight_str"
+    cp$df$str_row[inds] = str_rows
+    cp$df$part[inds] = "weight_var"
+    cp$df$content[inds] = weight_var
+    cp$n = new.n
+
+    # 1c) Add weight_type
+    new.n = cp$n+length(weight_str)
+    inds = (cp$n+1):new.n
+    cp$df$parent[inds] = "weight_type"
+    cp$df$str_row[inds] = str_rows
+    cp$df$part[inds] = "weight_type"
+    cp$df$content[inds] = weight_type
+
+    cp$n = new.n
+
   }
 
-  imported_mod_files = character(0)
-  if (isTRUE(import_mod_files)) {
-    mod_from = file.path(bundle_dir, "mod")
-    if (dir.exists(mod_from)) {
-      rb_copy_dir_contents(
-        from_dir = mod_from,
-        to_dir = file.path(project_dir, "mod"),
-        overwrite = overwrite
+  # 2. if_str
+  sub_end = stri_locate_first_fixed(cp$str,",")[,1]-1
+  sub_end = ifelse(is.na(sub_end),nchar(cp$str), sub_end )
+  sstr = substring(cp$str, sub_start, sub_end)
+
+  if_start = stri_locate_first_fixed(sstr, " if ")[,1] + sub_start
+  sstr = substring(sstr, if_start-sub_start+1)
+  if_end = stri_locate_first_regex(sstr, "( in )|(\\{\\{)")[,1] + if_start - 2
+  if_end = ifelse(is.na(if_end),sub_end, if_end)
+
+  str_rows = which(!is.na(if_start))
+  if_start = if_start[str_rows]; if_end = if_end[str_rows]
+  cp = cp_add(cp,str_rows,if_start,if_end,"if_str","",ignore.right.ws=TRUE)
+
+  cp$str
+
+  # 3. in_str
+
+  sub_end = stri_locate_first_fixed(cp$str,",")[,1]-1
+  sub_end = ifelse(is.na(sub_end),nchar(cp$str), sub_end )
+  sstr = substring(cp$str, sub_start, sub_end)
+
+  in_start = stri_locate_first_fixed(sstr, " in ")[,1] + sub_start
+  sstr = substring(sstr, in_start-sub_start+1)
+  in_end = stri_locate_first_fixed(sstr, "{{")[,1] + in_start - 2
+  in_end = ifelse(is.na(in_end),sub_end, in_end)
+
+  str_rows = which(!is.na(in_start))
+  in_start = in_start[str_rows]; in_end = in_end[str_rows]
+  cp = cp_add(cp,str_rows,in_start,in_end,"in_str","",ignore.right.ws=TRUE)
+
+  cp$str
+
+  # options ###########################################
+
+  # cp$str now looks e.g. like
+  # {{cmd}} {{varlist}} {{if_str}} {{weight_str}} {{in_str}}, robust   level#~br3~#
+
+  # We now replace bracket placeholders again since option parsing deals on its own with brackets
+  restore.point("cmdpart_of_reg_opts")
+  #options(warn=2)
+  #disable.restore.points(!TRUE)
+  #undebug(replace.placeholders)
+  cp$str = replace.placeholders(cp$str, ph.df)
+  cp$df$content = replace.ph.keep.lines(cp$df$content, ph.df)
+
+
+  start = stri_locate_first_regex(cp$str,",")[,1]+1
+  end = nchar(cp$str)
+  str_rows = which(!is.na(start))
+
+  make_opts = FALSE
+  if (length(str_rows) > 0) {
+    start = start[str_rows]; end = end[str_rows]
+    all_opt_str = substring(cp$str[str_rows],start)
+    res = cmdpart_parse_stata_opt_str(all_opt_str)
+    lens = lapply(res$opt_str,length)
+    make_opts = (any(lens>0))
+  }
+  if (make_opts) {
+    # Replace str
+    opt_ph = sapply(res$opt_str, function(x) paste0("{{opt_str", seq_along(x),"}}", collapse=" "))
+    cp$str[str_rows] = stringi::stri_sub_replace(cp$str[str_rows], from=start, to=end, replacement=opt_ph)
+
+    if (FALSE) {
+      test_li = list(
+        str_row = unlist(mapply(rep,x=str_rows, times=lens,SIMPLIFY = FALSE)),
+        parent = "main",
+        opt_str = unlist(res$opt_str),
+        opt = unlist(res$opt),
+        opt_arg = unlist(res$opt_arg)
       )
-      imported_mod_files = list.files(
-        path = mod_from,
-        recursive = TRUE,
-        full.names = FALSE,
-        all.files = TRUE,
-        no.. = TRUE
-      )
+      sapply(test_li, length)
     }
-  }
 
-  imported_intermediate_files = character(0)
-  if (isTRUE(import_intermediate_data)) {
-    intermediate_from = file.path(bundle_dir, "intermediate_data")
-    if (dir.exists(intermediate_from)) {
-      rb_copy_tree(
-        from = intermediate_from,
-        to = file.path(project_dir, "intermediate_data"),
-        overwrite = overwrite
-      )
-      imported_intermediate_files = list.files(
-        path = intermediate_from,
-        recursive = TRUE,
-        full.names = FALSE,
-        all.files = TRUE,
-        no.. = TRUE
-      )
+    my_unlist = function(x, empty = character(0)) {
+      res = unlist(x)
+      if (is.null(res)) return(empty)
+      res
     }
+
+    opt_df = tibble(
+        str_row = unlist(mapply(rep,x=str_rows, times=lens,SIMPLIFY = FALSE)),
+        parent = rep("main", length(str_row)),
+        opt_str = my_unlist(res$opt_str),
+        opt = my_unlist(res$opt),
+        opt_arg = my_unlist(res$opt_arg)
+      ) %>%
+      group_by(str_row) %>%
+      mutate(opt_num = seq_len(n())) %>%
+      ungroup()
+
+    n_add = NROW(opt_df)*2 + sum(!is.na(opt_df$opt_arg))
+    if (cp$n + n_add >= NROW(cp$df)) {
+      cp$df = cp_add_empty_df(cp$df, n_add*2)
+    }
+
+    # 4a) add opt_str
+    new.n = (cp$n+NROW(opt_df))
+    inds = (cp$n+1):new.n
+    cp$df$parent[inds] = "main"
+    cp$df$str_row[inds] = opt_df$str_row
+    cp$df$part[inds] = "opt_str"
+    cp$df$counter[inds] = opt_df$opt_num
+    cp$df$content[inds] = opt_df$opt_str
+
+    cp$n = new.n
+
+    # 4b) add opt
+    new.n = (cp$n+NROW(opt_df))
+    inds = (cp$n+1):new.n
+    cp$df$parent[inds] = paste0("opt_str")
+    cp$df$str_row[inds] = opt_df$str_row
+    cp$df$part[inds] = "opt"
+    cp$df$counter[inds] = opt_df$opt_num
+    cp$df$content[inds] = opt_df$opt
+
+    cp$n = new.n
+
+    # 4c) add opt_arg where it exists
+    rows = which(!is.na(opt_df$opt_arg))
+
+    if (length(rows)>0) {
+      new.n = cp$n+length(rows)
+      inds = (cp$n+1):new.n
+      cp$df$parent[inds] = "opt_str"
+      cp$df$str_row[inds] = opt_df$str_row[rows]
+      cp$df$part[inds] = "opt_arg"
+      cp$df$counter[inds] = opt_df$opt_num[rows]
+      cp$df$content[inds] = opt_df$opt_arg[rows]
+
+      cp$n = new.n
+    }
+
   }
 
-  if (isTRUE(restore_intermediate_data_to_mod)) {
-    # If the user explicitly asks, try to map the restored items back to mod
-    # but normally the mod mapping is extracted organically.
-    # rb_restore_latest_intermediate_data_to_mod(project_dir, overwrite = overwrite)
+  # adapt tags and df ##########################################
+
+  df = cp$df[seq_len(cp$n),]
+  rows = which(df$tag == "cap_quiet")
+  if (length(rows)>0) {
+    is_capture = has.substr(df$content[rows], "cap")
+    df$tag[rows[is_capture]] = "capture"
+    df$tag[rows[!is_capture]] = "quietly"
   }
 
-  invisible(list(
-    project_dir = project_dir,
-    bundle_dir = bundle_dir,
-    manifest = manifest,
-    imported_repdb_files = imported_repdb_files,
-    imported_mod_files = imported_mod_files,
-    imported_intermediate_files = imported_intermediate_files
-  ))
+  cont = trimws(df$content)
+  rows = which(df$part == "pre")
+  if (length(rows) > 0) {
+    df$content[rows] = gsub("[ \t]+\\:",":", df$content[rows])
+    irows = rows[trimws(df$content[rows]) == "xi:"]
+    df$tag[irows] = "xi"
+  }
+
+  rows = which(df$part == "cmd" | df$part == "subcmd")
+  df$tag[rows] = df$content[rows]
+
+  df$content[seq_along(cp$str)] = cp$str
+
+
+  restore.point("jslkfslfhksdfh")
+
+  opt_rows = which(df$part == "opt" & df$content %in% c("vce","robust","cluster","r","ro","rob","robu","robus","cl","clu","clus","clust","cluste","cluster",""))
+  df$tag[opt_rows] = "se"
+
+  opt_str_rows = cmdpart_find_parent_rows(df, opt_rows)
+  df$tag[opt_str_rows] = "se"
+
+  opt_arg_rows = cmdpart_find_child_rows(df, opt_str_rows, "opt_arg") %>% na.omit()
+  df$tag[opt_arg_rows] = "se"
+
+
+  opt_rows = which(df$part == "opt" & df$content %in% c("absorb"))
+  df$tag[opt_rows] = "absorb"
+
+  opt_str_rows = cmdpart_find_parent_rows(df, opt_rows)
+  df$tag[opt_str_rows] = "absorb"
+
+  opt_arg_rows = cmdpart_find_child_rows(df, opt_str_rows, "opt_arg") %>% na.omit()
+  df$tag[opt_arg_rows] = "absorb"
+
+
+  df
 }
 ```
-
-!END_MODIFICATION rb_import_gha_stata_bundle in rb_gha.R
-
-The key new block is this one inside `rb_make_gha_stata_bundle()`, after copying `problems` and before copying generated `mod` files:
-
-```r
-if (length(include_repdb_parcels) > 0) {
-  repdb_files = file.path(
-    project_dir,
-    "repdb",
-    paste0(include_repdb_parcels, ".Rds")
-  )
-  repdb_files = repdb_files[file.exists(repdb_files)]
-
-  if (length(repdb_files) > 0) {
-    bundle_repdb_dir = file.path(bundle_dir, "repdb")
-    dir.create(bundle_repdb_dir, recursive = TRUE, showWarnings = FALSE)
-
-    ok = file.copy(
-      from = repdb_files,
-      to = file.path(bundle_repdb_dir, basename(repdb_files)),
-      overwrite = TRUE,
-      copy.mode = TRUE,
-      copy.date = TRUE
-    )
-
-    if (!all(ok)) {
-      stop("Could not copy all selected repdb parcels to the Github Actions bundle.")
-    }
-  }
-}
-```
-
-With the default
-
-```r
-include_repdb_parcels = c("stata_scalar")
-```
-
-the GHA artifact will contain:
-
-```r
-repdb/stata_scalar.Rds
-```
-
-and the import function will copy it back to:
-
-```r
-<local project>/repdb/stata_scalar.Rds
-```
+!END_MODIFICATION cmdparts_of_stata_reg repboxUtils/R/cmdpart_reg.R

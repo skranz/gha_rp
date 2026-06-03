@@ -35,6 +35,10 @@ cmdparts_of_stata_reg = function(cmdlines) {
     pho = stepwise.blocks.to.placeholder(str)
   }
 
+  # Normalize to ensure space before if/in when directly following a closing bracket, quote, or placeholder
+  pho$str = stringi::stri_replace_all_regex(pho$str, "(?<=[\\)\\]\"']|~#)if\\s", " if ")
+  pho$str = stringi::stri_replace_all_regex(pho$str, "(?<=[\\)\\]\"']|~#)in\\s", " in ")
+
   # In our example we have now
   # str = " if #~br1~# | i==2 | inlist#~br2~# [aw=x1] in 5/25 , robust"
   str = strsplit(pho$str,split = "\n")[[1]]
