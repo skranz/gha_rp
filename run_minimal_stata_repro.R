@@ -170,7 +170,8 @@ if (file.exists(cmds4inst_file)) {
     repboxStata::run_stata_do("stata_inst.do",verbose = TRUE)
   }
 } else {
-  cat(paste0("\nNo ", cmds4inst_file, " file be found."))
+  cat(paste0("\nNo ", cmds4inst_file, " file be found. Files in ", repo_dir,"\n:"))
+  print(list.files(repo_dir, glob2rx("*.*")))
 }
 
 message("Running raw Stata reproduction")
