@@ -11,9 +11,13 @@ if (FALSE) {
   rstudioapi::navigateToFile(file.path(project_dir, "test_report/test_report.Rmd"))
   rstudioapi::filesPaneNavigate(project_dir)
 
+
   # Extra debugging info for a given runid (if report stopped due to error)
-  if (FALSE)
-    mrb_runid_test_files(project_dir, runid=127)
+  # mrb_create_cache_at_runid(project_dir=project_dir, cache_runid=128)
+  # drf = drf_create(project_dir)
+  mrb_pid_test_files(project_dir, pid=128)
+  mrb_test_data_path(project_dir, pid=128)
+
 }
 
 repboxRun::rb_remove_project_dirs(project_dir, clear_all=TRUE)
