@@ -14,7 +14,7 @@ repdb_spec_map = function() {
 
 
 repdb_null_to_empty = function(df, table) {
-  if (!is.null(df)) return(df)
+  if (!is.null(df) & NCOL(df)>0) return(df)
   spec = spec = repdb_get_spec(table)
   dbspec_make_empty(spec)
 }

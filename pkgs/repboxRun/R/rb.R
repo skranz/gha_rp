@@ -4,7 +4,7 @@ rb_get_project_dir = function(project_dir) {
   return(project_dir)
 }
 
-rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing=TRUE, parent_env = parent.frame(), fail_action="error", forced_fail_action = NULL) {
+rb_new = function(project_dir, opts =  rb_options(), copy_existing=TRUE, parent_env = parent.frame(), fail_action="error", forced_fail_action = NULL, ...) {
   restore.point("rb_make_rb")
 
   if (!dir.exists(project_dir))
@@ -14,8 +14,6 @@ rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing
     old_rb = parent_env$rb
     if (isTRUE(old_rb$project_dir==project_dir)) {
       rb = old_rb
-      rb$just_steps = just_steps
-      rb$ignore_steps = ignore_steps
       rb$fail_action = fail_action
       rb$forced_fail_action = forced_fail_action
       rb_set_problem_opts(rb)
@@ -25,8 +23,6 @@ rb_new = function(project_dir, just_steps=NULL, ignore_steps=NULL, copy_existing
 
   rb = list(
     project_dir = project_dir,
-    just_steps = just_steps,
-    ignore_steps = ignore_steps,
     parcels = list(),
     opts =  rb_options(),
     fail_action = fail_action,
@@ -42,11 +38,7 @@ rb_set_problem_opts = function(rb) {
 }
 
 rb_shall_perform_step = function(rb, step) {
-  if (step %in% rb$ignore_steps) return(FALSE)
-  if (!is.null(rb$just_steps)) {
-    if (!step %in% rb$just_steps) return(FALSE)
-  }
-  return(TRUE)
+  TRUE
 }
 
 

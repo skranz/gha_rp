@@ -20,7 +20,7 @@ run_all_post_gha = function() {
 
 
 
-  rb = rb_new(project_dir, just_steps=NULL, ignore_steps=NULL)
+  rb = rb_new(project_dir)
 
   # Static code analysis
   cat("\nrb_update_static_code_analysis.\n")

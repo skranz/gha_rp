@@ -13,7 +13,7 @@ run_mr_base = function(rb=NULL) {
   if (FALSE)
     rstudioapi::filesPaneNavigate(project_dir)
 
-  rb = rb_new(project_dir, just_steps=NULL, ignore_steps=NULL)
+  rb = rb_new(project_dir)
   rb = rb_run_mr_base(rb, overwrite=FALSE)
   rb
 }

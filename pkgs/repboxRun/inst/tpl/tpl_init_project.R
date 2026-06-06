@@ -11,7 +11,7 @@ project_dir = rb_get_project_dir("{{default_project_dir}}")
 if (FALSE)
   rstudioapi::filesPaneNavigate(project_dir)
 
-rb = rb_make_rb(project_dir, just_steps=NULL, ignore_steps=NULL)
+rb = rb_make_rb(project_dir)
 
 overwrite = {{overwrite}}
 

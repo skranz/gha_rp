@@ -5,7 +5,6 @@ rb_update_meta = function(rb, overwrite=FALSE, opts=rb_options()) {
     return(rb)
   }
   library(repboxEJD)
-  if (!rb_shall_perform_step(rb,"meta")) return(rb)
 
   rb$has_meta = rb_has_meta(rb$project_dir)
   if (!overwrite & rb$has_meta) return(rb)
