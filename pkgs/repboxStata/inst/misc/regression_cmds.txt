@@ -83,4 +83,5 @@ dfactor
 ppmlhdfe
 svyreg
 ppml
+stcox
 ###cgmwildboot
