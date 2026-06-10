@@ -10,9 +10,6 @@ repdb_spec_map = function() {
   )
 }
 
-
-
-
 repdb_null_to_empty = function(df, table) {
   if (!is.null(df) & NCOL(df)>0) return(df)
   spec = spec = repdb_get_spec(table)

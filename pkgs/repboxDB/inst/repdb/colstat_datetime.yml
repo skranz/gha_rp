@@ -1,0 +1,40 @@
+name: colstat_datetime
+
+descr: >
+  Contains information about datetime (POSIXct) or date (Date) variables used in the regression.
+
+fields:
+  runid:
+    type: int
+
+  variant:
+
+  cterm:
+    descr: Canoncial name of the regression term.
+
+  class:
+    descr: |
+      'date' or 'datetime' (for POSIXct)
+
+  na_num:
+    descr: Number of NA values in the original data set
+    type: int
+
+  na_share:
+    descr: Share of NA values
+    type: num
+
+  min:
+    descr: Minimum of the variable computed on the regression data set (Stored as String)
+    type: string
+
+  max:
+    descr: Maximum of the variable computed on the regression data set (Stored as String)
+    type: string
+
+  distinct_num_org:
+    descr: Number of distinct values (excluding NA) in the original data set
+
+  distinct_num:
+    descr: Number of distinct values (excluding NA) in the regression data set
+
