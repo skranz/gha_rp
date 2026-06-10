@@ -26,11 +26,10 @@ fields:
 
   min:
     descr: Minimum of the variable computed on the regression data set (Stored as String)
-    type: string
+
 
   max:
     descr: Maximum of the variable computed on the regression data set (Stored as String)
-    type: string
 
   distinct_num_org:
     descr: Number of distinct values (excluding NA) in the original data set
