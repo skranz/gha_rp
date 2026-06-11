@@ -10,6 +10,15 @@ repbox_runid_problems = function() {
   getOption("repbox.runid.problems")
 }
 
+
+repbox_problem_set_project_dir = function(project_dir) {
+  opts = getOption("repbox.problem.options")
+  opts$project_dir = project_dir
+  options(repbox.problem.options = opts)
+  invisible(project_dir)
+}
+
+
 repbox_problem_set_runid = function(runid=NA_integer_) {
   options(repbox.problem.runid = runid)
   if (!is.na(runid)) {
@@ -42,6 +51,7 @@ make_fail_fun = function(fail_action) {
 
 repbox_set_current_project_dir = function(project_dir) {
   options(repbox.current.project.dir = project_dir)
+  repbox_problem_set_project_dir(project_dir)
 }
 
 repbox_get_current_project_dir = function() {

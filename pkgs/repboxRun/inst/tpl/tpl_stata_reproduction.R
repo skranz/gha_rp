@@ -12,7 +12,11 @@ run_stata_reproduction = function(rb=NULL) {
   if (FALSE)
     rstudioapi::filesPaneNavigate(project_dir)
 
+
+
   rb = rb_new(project_dir)
+
+  drf_clear_r_err_runids(project_dir)
 
   rb = rb_run_stata_reproduction(rb, overwrite=TRUE)
 

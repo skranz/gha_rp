@@ -14,6 +14,10 @@ run_all_post_gha = function() {
   if (!rb_has_ok_gha_run(project_dir))
     stop("\nNo successful gha_run omit further analysis.")
 
+
+  if (overwrite)
+    drf_clear_r_err_runids(project_dir)
+
   # Install SUP ZIP
   cat("\nCreate org folder if missing.\n")
   rb_extract_zip_to_org(project_dir=project_dir, overwrite=overwrite)
