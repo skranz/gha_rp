@@ -35,6 +35,7 @@ if (TRUE) {
 
 drf = repboxDRF::drf_load(project_dir)
 drf_clear_mcache()
+mrb_clean_for_rerun(project_dir)
 mrb = mrb_init(project_dir,with_try = TRUE)
 if (TRUE) {
   options(warn=2)

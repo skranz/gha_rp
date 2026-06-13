@@ -16,7 +16,7 @@ run_all_post_gha = function() {
 
 
   if (overwrite)
-    drf_clear_r_err_runids(project_dir)
+    mrb_clean_for_rerun(project_dir)
 
   # Install SUP ZIP
   cat("\nCreate org folder if missing.\n")

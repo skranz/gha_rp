@@ -16,7 +16,8 @@ run_stata_reproduction = function(rb=NULL) {
 
   rb = rb_new(project_dir)
 
-  drf_clear_r_err_runids(project_dir)
+  mrb_clean_for_rerun(project_dir)
+  #drf_clear_r_err_runids(project_dir)
 
   rb = rb_run_stata_reproduction(rb, overwrite=TRUE)
 
