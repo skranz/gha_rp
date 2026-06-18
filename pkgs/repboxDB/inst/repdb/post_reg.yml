@@ -1,0 +1,27 @@
+name: post_reg
+
+descr: |
+  Basic information for post-regression commands.
+
+unique_index:
+  main_index: [runid, variant]
+
+fields:
+  runid:
+    type: int
+
+  reg_runid:
+    type: int
+    descr: The runid of the associated regression command
+
+  cmd:
+
+  cmdline:
+
+  flags:
+    descr: |
+      Possibly flags that contain some info
+
+  has_err:
+    type: bool
+    descr: did the stata command run without error in the original replication

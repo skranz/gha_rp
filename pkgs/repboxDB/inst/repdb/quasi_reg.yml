@@ -1,0 +1,35 @@
+name: quasi_reg
+
+descr: |
+  Basic for quasi regression commands.
+
+unique_index:
+  main_index: [runid, variant]
+
+fields:
+  runid:
+    type: int
+
+  cmd:
+    descr: Name of the regression command, e.g. ivreg2 in Stata.
+
+  cmdline:
+    descr: Code that calls the regression command
+
+  timevar:
+    descr: Timeseries variable if explicitly set
+
+  panelvar:
+    descr: ID variable in a panel data set
+
+  tdelta:
+    descr: Stata's tdelta argument that specifies gap size in timevar. Cannot really deal with it yet.
+    type: int
+
+  flags:
+    descr: |
+      Possibly flags that contain some info
+
+  has_err:
+    type: bool
+    descr: did the stata command run without error in the original replication

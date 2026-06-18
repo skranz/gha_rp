@@ -14,6 +14,9 @@ example = function() {
 # Stores cmdpart parcels and internal reg info in repbox/stata dir
 # we cannot yet store any regcoef etc parcels
 # since that requires metaregBase semantic parsing with data set info
+# Stores cmdpart parcels and internal reg info in repbox/stata dir
+# we cannot yet store any regcoef etc parcels
+# since that requires metaregBase semantic parsing with data set info
 rsr_make_reg_info = function(project_dir, overwrite=FALSE, parcels=list(), repbox_results=repbox_load_internal_repbox_results(project_dir)) {
   restore.point("rsr_make_reg_info")
   parcels = repdb_load_parcels(project_dir, "stata_run_cmd")
@@ -21,6 +24,9 @@ rsr_make_reg_info = function(project_dir, overwrite=FALSE, parcels=list(), repbo
   parcels = rsr_make_cmdpart_parcels(project_dir = project_dir, overwrite=overwrite, run_df=run_df)
   rsr_make_stata_reg_run_info_parcel(project_dir, parcels=parcels,repbox_results=repbox_results)
   regtab = rsr_extract_stata_reg_output(project_dir)
+
+  # Extract quasi and post reg parcels from the original run
+  parcels = rsr_make_quasi_and_post_reg_parcels(project_dir, parcels=parcels, run_df=run_df)
 
   parcels
 }
@@ -153,4 +159,72 @@ rsr_make_stata_reg_run_info_parcel = function(project_dir, parcels=list(), repbo
 
   repdb_save_parcels(parcels[c("stata_reg_run_info")], file.path(project_dir, "repdb") )
   invisible(parcels)
+}
+#' Generate quasi_reg and post_reg parcels
+rsr_make_quasi_and_post_reg_parcels = function(project_dir, parcels = list(), run_df = NULL) {
+  restore.point("rsr_make_quasi_and_post_reg_parcels")
+
+  if (is.null(run_df)) {
+    parcels = repboxDB::repdb_load_parcels(project_dir, "stata_run_cmd", parcels = parcels)
+    run_df = repboxDRF::repbox_get_run_df(project_dir = project_dir, parcels = parcels)
+  }
+
+  if (is.null(run_df) || NROW(run_df) == 0) return(parcels)
+
+  repdb_dir = file.path(project_dir, "repdb")
+
+  parcels = repboxDB::repdb_load_parcels(project_dir, "xtvar", parcels = parcels)
+  xtvar = parcels$xtvar
+
+  if (!is.null(xtvar) && nrow(xtvar) > 0) {
+    xt_join = xtvar %>% dplyr::select(dplyr::any_of(c("runid", "timevar", "panelvar", "tdelta")))
+    run_df = run_df %>%
+      dplyr::select(-dplyr::any_of(c("timevar", "panelvar", "tdelta"))) %>%
+      dplyr::left_join(xt_join, by = "runid")
+  }
+
+  if (!"timevar" %in% names(run_df)) run_df$timevar = NA_character_
+  if (!"panelvar" %in% names(run_df)) run_df$panelvar = NA_character_
+  if (!"tdelta" %in% names(run_df)) run_df$tdelta = NA_character_
+
+  # 1. quasi_reg parcel
+  qrows = which(run_df$cmd_type == "quasi_reg")
+  if (length(qrows) > 0) {
+    quasi_reg = run_df[qrows, , drop = FALSE] %>%
+      dplyr::transmute(
+        runid = as.integer(runid),
+        variant = "so", # "so" because this is based on the Stata Original run
+        cmd = as.character(cmd),
+        cmdline = as.character(cmdline),
+        flags = "",
+        has_err = errcode != 0,
+        timevar = as.character(repboxUtils::na.val(timevar, "")),
+        panelvar = as.character(repboxUtils::na.val(panelvar, "")),
+        tdelta = as.character(repboxUtils::na.val(tdelta, ""))
+      )
+    parcels[["quasi_reg"]] = quasi_reg
+    repboxDB::repdb_save_parcels(parcels["quasi_reg"], dir = repdb_dir, check = FALSE)
+  }
+
+  # 2. post_reg parcel
+  prows = which(run_df$cmd_type == "post_reg")
+  if (length(prows) > 0) {
+    map_df = repboxDRF::drf_get_post_reg_reg_runid(run_df)
+
+    post_reg = run_df[prows, , drop = FALSE] %>%
+      dplyr::left_join(map_df, by = "runid") %>%
+      dplyr::transmute(
+        runid = as.integer(runid),
+        variant = "so",
+        reg_runid = as.integer(reg_runid),
+        cmd = as.character(cmd),
+        cmdline = as.character(cmdline),
+        flags = "",
+        has_err = errcode != 0
+      )
+    parcels[["post_reg"]] = post_reg
+    repboxDB::repdb_save_parcels(parcels["post_reg"], dir = repdb_dir, check = FALSE)
+  }
+
+  parcels
 }
