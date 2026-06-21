@@ -36,21 +36,26 @@ rsr_extract_stata_reg_output = function(project_dir, run.df=NULL, dotab=NULL, sa
     mutate(run = seq_len(n())) %>%
     ungroup()
 
-  regtab$ct = lapply(regtab$regresfile, function(file) {
-    restore.point("inner.read.regres")
-    regres = haven::read_dta(file)
-    old.cols = c("eq","parm","label","estimate","stderr","dof", "z","p","min95","max95")
-    new.cols = c("eq","var","label", "coef","se","dof", "t","p","ci_low","ci_up")
-    regres = rename.cols(regres, old.cols, new.cols)
-    regres = regres[,intersect(new.cols, colnames(regres)), drop=FALSE]
-    if (!"eq" %in% colnames(regres)) {
-      regres$eq = rep("", NROW(regres))
-    }
-    regres
-  })
-  regtab = select(regtab, -regresfile)
+  if (NROW(regtab) > 0) {
+    regtab$ct = lapply(regtab$regresfile, function(file) {
+      restore.point("inner.read.regres")
+      regres = haven::read_dta(file)
+      old.cols = c("eq","parm","label","estimate","stderr","dof", "z","p","min95","max95")
+      new.cols = c("eq","var","label", "coef","se","dof", "t","p","ci_low","ci_up")
+      regres = rename.cols(regres, old.cols, new.cols)
+      regres = regres[,intersect(new.cols, colnames(regres)), drop=FALSE]
+      if (!"eq" %in% colnames(regres)) {
+        regres$eq = rep("", NROW(regres))
+      }
+      regres
+    })
+  } else {
+    regtab$ct = list()
+  }
 
-
+  if ("regresfile" %in% names(regtab)) {
+    regtab = select(regtab, -regresfile)
+  }
 
   #++++++++++++++++++++++++++++++++++++++++++++++++++
   # 2. Extract regression information stored in logs
@@ -62,33 +67,50 @@ rsr_extract_stata_reg_output = function(project_dir, run.df=NULL, dotab=NULL, sa
   reg.log = lapply(log.files, function(file) {
     log.txt = readLines(file,warn=FALSE)  %>% enc2utf8()
     bdf = extract.inject.blocks(log.txt, type="REG_ERETURN")
+
+    file_donum = as.integer(str.between(basename(file), "_", ".log"))
+    if (!is.na(file_donum) && NROW(bdf) > 0) {
+      bdf = bdf[bdf$donum == file_donum, , drop = FALSE]
+    }
+
+    if (NROW(bdf) == 0) return(tibble())
+
     bdf$er = lapply(bdf$str,parse.ereturn.injection)
     bdf
   }) %>% bind_rows()
 
-  regtab = left_join(regtab, select(reg.log, donum, line, counter, er), by=c("donum","line","counter"))
+  if (NROW(reg.log) > 0) {
+    regtab = left_join(regtab, select(reg.log, donum, line, counter, er), by=c("donum","line","counter"))
+  } else if (NROW(regtab) > 0) {
+    regtab$er = vector("list", NROW(regtab))
+  }
 
   #++++++++++++++++++++++++++++++++++++++++++++++++++
   # 3. Merge with run.df
   #++++++++++++++++++++++++++++++++++++++++++++++++++
 
-  regtab = left_join(regtab,run.df, by=c("donum","line","counter"))
+  if (NROW(regtab) > 0) {
+    regtab = left_join(regtab,run.df, by=c("donum","line","counter"))
 
-  # UPDATE: Only consider regression where missing_data = FALSE
-  # Otherwise we likely have faulty regressions that use an earlier data set
-  # Also ignore regression results with run error
-  regtab = regtab[regtab$has.data & !regtab$runerr,]
+    # UPDATE: Only consider regression where missing_data = FALSE
+    # Otherwise we likely have faulty regressions that use an earlier data set
+    # Also ignore regression results with run error
+    regtab = regtab[regtab$has.data & !regtab$runerr,]
+  }
 
+  if (NROW(regtab) > 0) {
+    regtab$artid = artid
 
-  regtab$artid = artid
+    # merge with dotab to get doid
+    regtab = regtab %>% left_join(dotab %>% select(donum, doid), by="donum")
 
-  # merge with dotab to get doid
-  regtab = regtab %>% left_join(dotab %>% select(donum, doid), by="donum")
+    #colnames(regtab)
+    cols = c("artid", "runid", "donum", "doid", "line", "counter","cmd", "cmdline","ct","er", "datasig", "timevar" ,"panelvar", "tdelta",        "runerr",        "runerrcode",    "runerrmsg",     "runsec", "orgline", "in.program", "has.data")
 
-  #colnames(regtab)
-  cols = c("artid", "runid", "donum", "doid", "line", "counter","cmd", "cmdline","ct","er", "datasig", "timevar" ,"panelvar", "tdelta",        "runerr",        "runerrcode",    "runerrmsg",     "runsec", "orgline", "in.program", "has.data")
-  regtab = regtab[,cols]
-
+    # Ensure all columns exist to avoid errors
+    cols_exist = intersect(cols, colnames(regtab))
+    regtab = regtab[,cols_exist]
+  }
 
   if (save) {
     saveRDS(regtab, file.path(project_dir,"repbox/stata/regtab.Rds"))
