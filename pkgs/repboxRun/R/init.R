@@ -35,7 +35,7 @@ repbox_init_project = function(project_dir, sup_zip=NULL, pdf_files=NULL, html_f
     # Some reproduction packages consist of multiple zip
     # files
     for (zip_file in sup_zip) {
-      repbox_sup_extract_zip(project_dir, zip_file, just_extract_code, remove_macosx_dirs=remove_macosx_dirs)
+      repbox_sup_extract_zip(project_dir, zip_file, just_extract_code, remove_macosx_dirs=remove_macosx_dirs,  nested_unzip=TRUE)
     }
   }
 
@@ -60,7 +60,7 @@ repbox_has_just_extracted_code = function(project_dir) {
   file.exists(just_extract_code_file)
 }
 
-repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remove_macosx_dirs=TRUE) {
+repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remove_macosx_dirs=TRUE, nested_unzip=TRUE) {
   restore.point("repbox_sup_just_extract_code")
 
   org.dir = file.path(project_dir,"org")
@@ -86,7 +86,7 @@ repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remov
 
 
   if (!just_extract_code) {
-    robust_unzip(sup_zip, exdir = org.dir)
+    robust_unzip(sup_zip, exdir = org.dir, nested_unzip=nested_unzip)
     if (file.exists(just_extract_code_file)) file.remove(just_extract_code_file)
     note_problem_if_no_sub_files(project_dir, file_df = file_df)
     return(TRUE)
@@ -97,7 +97,7 @@ repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remov
     # internal unzip more often claims that ZIP is
     # corrupted while command line unzip works
     #unzip(sup_zip,files = code_files,exdir = org.dir, unzip="unzip")
-    robust_unzip(normalizePath(sup_zip), exdir=normalizePath(org.dir), files=code_files)
+    robust_unzip(normalizePath(sup_zip), exdir=normalizePath(org.dir), files=code_files, nested_unzip=nested_unzip)
     note_problem_if_no_sub_files(project_dir, file_df = file_df)
   } else {
     dir.create(org.dir)
@@ -141,8 +141,11 @@ remove_macosx_dirs = function(parent.dir) {
 
 # R's internal unzip command too often thinks the ZIP file of a replication package
 # is corrupted even though linux command line unzip is able to unzip it.
-robust_unzip = function(zipfile, exdir, files=NULL, overwrite=TRUE, verbose=FALSE) {
+# R's internal unzip command too often thinks the ZIP file of a replication package
+# is corrupted even though linux command line unzip is able to unzip it.
+robust_unzip = function(zipfile, exdir, files=NULL, overwrite=TRUE, verbose=FALSE, nested_unzip=TRUE, remove_nested_zip=FALSE) {
   restore.point("robust_unzip")
+
   if (overwrite) {
     cmd = paste0("unzip -o ")
   } else {
@@ -150,14 +153,50 @@ robust_unzip = function(zipfile, exdir, files=NULL, overwrite=TRUE, verbose=FALS
   }
 
   if (is.null(files)) {
-    cmd = paste0(cmd, '"', normalizePath(zipfile), '" -d "', normalizePath(exdir,mustWork = FALSE),'"')
+    cmd = paste0(cmd, '"', normalizePath(zipfile), '" -d "', normalizePath(exdir, mustWork = FALSE), '"')
   } else {
-    cmd = paste0(cmd,'"', normalizePath(zipfile), '" ', paste0('"',files,'"', collapse=" "), ' -d "', normalizePath(exdir,mustWork = FALSE),'"')
-
+    cmd = paste0(cmd, '"', normalizePath(zipfile), '" ', paste0('"', files, '"', collapse=" "), ' -d "', normalizePath(exdir, mustWork = FALSE), '"')
   }
-  cat(cmd)
-  system(cmd,ignore.stdout = !verbose)
-  #rstudioapi::filesPaneNavigate(exdir)
+
+  if (verbose) cat(cmd, "\n")
+  system(cmd, ignore.stdout = !verbose)
+
+  # Recursively handle nested zip files
+  if (nested_unzip) {
+    # Track zips to avoid infinite loops
+    processed_zips = normalizePath(zipfile, mustWork=FALSE)
+
+    while (TRUE) {
+      # Scan exdir for newly extracted .zip files
+      current_zips = list.files(exdir, pattern = "\\.zip$", ignore.case = TRUE, recursive = TRUE, full.names = TRUE)
+      current_zips = normalizePath(current_zips, mustWork = FALSE)
+
+      new_zips = setdiff(current_zips, processed_zips)
+
+      if (length(new_zips) == 0) {
+        break # No more nested zips to extract
+      }
+
+      for (nz in new_zips) {
+        if (verbose) cat("\nExtracting nested zip:", nz)
+        # Extract the nested zip into the directory where it resides
+        robust_unzip(
+          zipfile = nz,
+          exdir = dirname(nz),
+          files = NULL,
+          overwrite = overwrite,
+          verbose = verbose,
+          nested_unzip = FALSE # We handle depth dynamically in the while loop
+        )
+
+        processed_zips = c(processed_zips, nz)
+
+        if (remove_nested_zip) {
+          file.remove(nz)
+        }
+      }
+    }
+  }
 }
 
 

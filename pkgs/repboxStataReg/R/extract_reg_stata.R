@@ -57,7 +57,7 @@ rsr_extract_stata_reg_output = function(project_dir, run.df=NULL, dotab=NULL, sa
   #++++++++++++++++++++++++++++++++++++++++++++++++++
 
   dir = file.path(project_dir, "repbox/stata/logs")
-  log.files = list.files(dir,glob2rx("log_*.log"),full.names = TRUE)
+  log.files = list.files(dir, pattern = "^(log|include)_.*\\.log$", full.names = TRUE)
 
   reg.log = lapply(log.files, function(file) {
     log.txt = readLines(file,warn=FALSE)  %>% enc2utf8()

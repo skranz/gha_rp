@@ -1,405 +1,167 @@
-Absolutely. Using `stringi` is a great choice here since it handles Perl-compatible regular expressions natively and is often faster and more robust with UTF-8 encodings (which is something you are already actively handling in your parsing).
+This is a great idea. Replication packages frequently contain nested `.zip` files (e.g., authors zip up specific datasets or code folders before zipping the whole supplement). Relying on R's internal `unzip()` (like what is currently done in `unzip.zips()` in `file_utils.R`) often throws false "corrupted zip" errors, so moving this capability securely into the command-line powered `robust_unzip()` is the best approach.
 
-We will replace the base R `gsub(..., perl=TRUE)` calls with `stringi::stri_replace_all_regex()`.
+Below is a complete proposal on how to implement this, passing the configuration all the way down from the top-level `rb_options()` to the actual system call.
 
-Here are the revised modification blocks:
+### 1. Update `robust_unzip()` in `init.R`
+We can add a `nested_unzip = TRUE` argument and implement a `while` loop to iteratively discover and extract newly unzipped `.zip` files. We track processed zips to prevent infinite loops (in case the zip files aren't deleted after extraction).
 
-!MODIFICATION extract.if.in.using repboxStata/R/parse.R
-scope = "function"
-file = "/home/rstudio/repbox/repboxStata/R/parse.R"
-function_name = "extract.if.in.using"
-description = "Normalize string using stringi to ensure a space before if, in, using if they follow a closing bracket, quote, or placeholder."
----
 ```r
-extract.if.in.using = function(str) {
-  restore.point("extract.if.in.using")
-  #str = c("dothings x using x if a>5","", "dothings x if a>5 using x")
-
-  # Normalize to ensure space before if/in/using when directly following a closing bracket, quote, or placeholder
-  str = stringi::stri_replace_all_regex(str, "(?<=[\\)\\]\"']|~#)if\\s", " if ")
-  str = stringi::stri_replace_all_regex(str, "(?<=[\\)\\]\"']|~#)in\\s", " in ")
-  str = stringi::stri_replace_all_regex(str, "(?<=[\\)\\]\"']|~#)using\\s", " using ")
-
-  patterns = c(" if ", " in ", " using ")
-  keys = c("if", "in", "using")
-
-  pos = pos.end = matrix(NA, nrow=length(str), ncol=length(keys))
-  #colnames(pos) = keys
-  col = 1
-  for (col in seq_along(keys)) {
-    col.pos = str.locate.first(str, patterns[col])
-    pos[,col] = col.pos[,1]
-    pos.end[,col] = col.pos[,2]
+# FILE: init.R
+# R's internal unzip command too often thinks the ZIP file of a replication package
+# is corrupted even though linux command line unzip is able to unzip it.
+robust_unzip = function(zipfile, exdir, files=NULL, overwrite=TRUE, verbose=FALSE, nested_unzip=TRUE, remove_nested_zip=FALSE) {
+  restore.point("robust_unzip")
+  
+  if (overwrite) {
+    cmd = paste0("unzip -o ")
+  } else {
+    cmd = paste0("unzip -n ")
   }
-  pos[is.na(pos)] = -Inf
-  pos.start = pos
-  max.col(pos)
 
-  col = 3
-  key.str = replicate(length(keys), rep(NA_character_, length(str)),simplify = FALSE)
-  names(key.str) = keys
-
-  changed = FALSE
-  while(TRUE) {
-    for (col in rev(seq_along(keys))) {
-      has.col = is.finite(pos[,col]) & max.col(pos) == col
-      if (any(has.col)) {
-        changed = TRUE
-      } else {
-        next
+  if (is.null(files)) {
+    cmd = paste0(cmd, '"', normalizePath(zipfile), '" -d "', normalizePath(exdir, mustWork = FALSE), '"')
+  } else {
+    cmd = paste0(cmd, '"', normalizePath(zipfile), '" ', paste0('"', files, '"', collapse=" "), ' -d "', normalizePath(exdir, mustWork = FALSE), '"')
+  }
+  
+  if (verbose) cat(cmd, "\n")
+  system(cmd, ignore.stdout = !verbose)
+  
+  # Recursively handle nested zip files
+  if (nested_unzip) {
+    # Track zips to avoid infinite loops
+    processed_zips = normalizePath(zipfile, mustWork=FALSE)
+    
+    while (TRUE) {
+      # Scan exdir for newly extracted .zip files
+      current_zips = list.files(exdir, pattern = "\\.zip$", ignore.case = TRUE, recursive = TRUE, full.names = TRUE)
+      current_zips = normalizePath(current_zips, mustWork = FALSE)
+      
+      new_zips = setdiff(current_zips, processed_zips)
+      
+      if (length(new_zips) == 0) {
+        break # No more nested zips to extract
       }
-      key.str[[col]][has.col] = substring(str[has.col], pos.end[has.col,col]+1) %>% trimws()
-      str[has.col] = substring(str[has.col],1,pos[has.col,col]-1)
-      pos = pos[,-col, drop=FALSE]
-      pos.start[has.col, col] = -Inf
+      
+      for (nz in new_zips) {
+        if (verbose) cat("\nExtracting nested zip:", nz)
+        # Extract the nested zip into the directory where it resides
+        robust_unzip(
+          zipfile = nz, 
+          exdir = dirname(nz), 
+          files = NULL, 
+          overwrite = overwrite, 
+          verbose = verbose, 
+          nested_unzip = FALSE # We handle depth dynamically in the while loop
+        )
+        
+        processed_zips = c(processed_zips, nz)
+        
+        if (remove_nested_zip) {
+          file.remove(nz)
+        }
+      }
     }
-    if (!changed) break
-    changed = FALSE
-    pos = pos.start
   }
-
-  return(list(str = str,parts=key.str))
-
 }
 ```
-!END_MODIFICATION extract.if.in.using repboxStata/R/parse.R
 
-!MODIFICATION cmdparts_of_stata_reg repboxUtils/R/cmdpart_reg.R
-scope = "function"
-file = "/home/rstudio/repbox/repboxUtils/R/cmdpart_reg.R"
-function_name = "cmdparts_of_stata_reg"
-description = "Normalize string using stringi to ensure a space before if and in if they follow a closing bracket, quote, or placeholder."
----
+### 2. Update Options in `rb.R` and `run_opts.R`
+Add the `nested_unzip` parameter with a default of `TRUE` to your global options configuration.
+
 ```r
-cmdparts_of_stata_reg = function(cmdlines) {
-  restore.point("stata_reg_cmdpart")
-
-  if (length(cmdlines)==0) return(data.frame(str_row = integer(0), parent=character(0), part=character(0), content=character(0), tag=character(0), counter=integer(0), runid=integer(0)))
-
-  str = trimws(cmdlines)
-  # Replace tabs with spaces
-  # Otherwise we wont correctly store the cmd
-  # variable
-  str = gsub("\t"," ", str, fixed=TRUE)
-
-
-  # For some really tricky if conditions or similar
-  # We first replace brackets and quotes by placeholders
-  # reg y x1 if (i==1) | i==2 | inlist(f1, "A" "B") [aw=x1] in 5/25, robust   level( 95  )
-
-  txt = paste0(str, collapse = "\n")
-  pho = try(blocks.to.placeholder(txt, start=c("("), end=c(")"), ph.prefix = "#~br"))
-  if (is(pho,"try-error")) {
-    pho = stepwise.blocks.to.placeholder(str)
+# FILE: rb.R (Update rb_options)
+rb_options = function(install_from = "local_ejd", stop.on.error = TRUE, stata_version = 17, store_data_caches=TRUE, timeout = 60*5, remove_existing_problems=TRUE, nested_unzip=TRUE, stata_opts = NULL, r_opts = NULL, problem_fail_action= if(stop.on.error) "error" else "msg", ...) {
+  opts = as.list(environment())
+  if (is.null(stata_opts)) {
+    if (require(repboxStata, quietly = TRUE))
+      opts$stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout)
   }
-
-  # Normalize to ensure space before if/in when directly following a closing bracket, quote, or placeholder
-  pho$str = stringi::stri_replace_all_regex(pho$str, "(?<=[\\)\\]\"']|~#)if\\s", " if ")
-  pho$str = stringi::stri_replace_all_regex(pho$str, "(?<=[\\)\\]\"']|~#)in\\s", " in ")
-
-  # In our example we have now
-  # str = " if #~br1~# | i==2 | inlist#~br2~# [aw=x1] in 5/25 , robust"
-  str = strsplit(pho$str,split = "\n")[[1]]
-  if (length(str)==0) str = ""
-  ph.df = pho$ph.df
-
-
-
-  cp = cp_init(str)
-
-  while(TRUE) {
-    cp = cp_jump_ws(cp)
-    cp = cp_add_starts_with(cp,c("quietly:","quiet:","qui:","quietly ","quiet ","qui ", "capture ","capture:","cap ", "cap:","capt ", "capt:"),"pre","cap_quiet",use_counter=TRUE)
-    if (!cp$did_change) break
+  if (is.null(r_opts)) {
+    if (require(repboxR, quietly = TRUE))
+      opts$r_opts = repbox_r_opts()
   }
-  cp$str
-  substring(cp$str, cp$start)
-
-  # Find colon prefixes before command
-  while(TRUE) {
-    cp = cp_jump_ws(cp)
-    cp = cp_add_left_of(cp,":","pre","",use_counter=TRUE, include_split=TRUE)
-    if (!cp$did_change) break
-  }
-
-  cp$str
-  substring(cp$str, cp$start)
-  # Set brackets () into ph
-  # res = set_cmdpart_block(str, cp, "(", ")","()","",counter=TRUE)
-  # str = res$str; cp = res$cp
-
-  cp = cp_jump_ws(cp)
-  cp = cp_add_left_of(cp,"( )|(,)|$|(\\[)", "cmd", "",fixed = FALSE)
-
-
-
-  cp = cp_jump_ws(cp)
-  cp = cp_add_left_of(cp, "( in )|( if )|(\\[)|,|$", "varlist","", use_counter=FALSE, fixed=FALSE)
-
-
-
-  # varlist ############################################
-
-  # Pass the placeholder dictionary to cp so the sub-functions can resolve brackets
-  cp$ph_df <- ph.df
-  cp <- cmdpart_process_reg_varlists(cp)
-  df = cp$df
-  cp$str
-
-  # weight_str, in_str and if_str #################################
-
-  # Now it is getting a bit more complicated
-  # We want to set if_str, in_str and weight_str
-  # but they may appear in different orders or not at all
-
-  # a) weight_str
-  sub_start = cp$start
-  sub_end = stri_locate_first_fixed(cp$str,",")[,1]-1
-  sub_end = ifelse(is.na(sub_end),nchar(cp$str), sub_end )
-
-  sstr = substring(cp$str, sub_start, sub_end)
-
-  weight_start = stri_locate_first_fixed(sstr, "[")[,1] + sub_start -1
-  weight_end = stri_locate_first_fixed(sstr, "]")[,2] + sub_start -1
-
-
-  str_rows = which(!is.na(weight_start))
-
-  if (length(str_rows)>0) {
-    weight_str = substring(cp$str[str_rows], weight_start[str_rows], weight_end[str_rows])
-
-    cp$str[str_rows] = stringi::stri_sub_replace(cp$str[str_rows], from=weight_start[str_rows], to=weight_end[str_rows], replacement="{{weight_str}}")
-
-
-
-    equal_pos = stringi::stri_locate_first_fixed(weight_str,"=")[,1]
-    has_weight_type = !is.na(equal_pos)
-    weight_type = ifelse(has_weight_type,substring(weight_str,2, equal_pos-1) %>% trimws(), NA)
-    var_start = ifelse(has_weight_type,equal_pos+1,2 )
-    weight_var = substring(weight_str,var_start, nchar(weight_str)-1) %>% trimws()
-    weight_str = ifelse(has_weight_type,
-      paste0("[{{weight_type}}={{weight_var}}]"),
-      paste0("[{{weight_var}}]")
-    )
-
-    n_add = NROW(weight_str)*3
-    if (cp$n + n_add >= NROW(cp$df)) {
-      cp$df = cp_add_empty_df(cp$df, n_add*2)
-    }
-
-    # 1a) add weight_str
-    new.n = cp$n+length(weight_str)
-    inds = (cp$n+1):new.n
-    cp$df$parent[inds] = "main"
-    cp$df$str_row[inds] = str_rows
-    cp$df$part[inds] = "weight_str"
-    cp$df$content[inds] = weight_str
-    cp$n = new.n
-
-    # 1b) Add weight_var
-    new.n = cp$n+length(weight_str)
-    inds = (cp$n+1):new.n
-    cp$df$parent[inds] = "weight_str"
-    cp$df$str_row[inds] = str_rows
-    cp$df$part[inds] = "weight_var"
-    cp$df$content[inds] = weight_var
-    cp$n = new.n
-
-    # 1c) Add weight_type
-    new.n = cp$n+length(weight_str)
-    inds = (cp$n+1):new.n
-    cp$df$parent[inds] = "weight_type"
-    cp$df$str_row[inds] = str_rows
-    cp$df$part[inds] = "weight_type"
-    cp$df$content[inds] = weight_type
-
-    cp$n = new.n
-
-  }
-
-  # 2. if_str
-  sub_end = stri_locate_first_fixed(cp$str,",")[,1]-1
-  sub_end = ifelse(is.na(sub_end),nchar(cp$str), sub_end )
-  sstr = substring(cp$str, sub_start, sub_end)
-
-  if_start = stri_locate_first_fixed(sstr, " if ")[,1] + sub_start
-  sstr = substring(sstr, if_start-sub_start+1)
-  if_end = stri_locate_first_regex(sstr, "( in )|(\\{\\{)")[,1] + if_start - 2
-  if_end = ifelse(is.na(if_end),sub_end, if_end)
-
-  str_rows = which(!is.na(if_start))
-  if_start = if_start[str_rows]; if_end = if_end[str_rows]
-  cp = cp_add(cp,str_rows,if_start,if_end,"if_str","",ignore.right.ws=TRUE)
-
-  cp$str
-
-  # 3. in_str
-
-  sub_end = stri_locate_first_fixed(cp$str,",")[,1]-1
-  sub_end = ifelse(is.na(sub_end),nchar(cp$str), sub_end )
-  sstr = substring(cp$str, sub_start, sub_end)
-
-  in_start = stri_locate_first_fixed(sstr, " in ")[,1] + sub_start
-  sstr = substring(sstr, in_start-sub_start+1)
-  in_end = stri_locate_first_fixed(sstr, "{{")[,1] + in_start - 2
-  in_end = ifelse(is.na(in_end),sub_end, in_end)
-
-  str_rows = which(!is.na(in_start))
-  in_start = in_start[str_rows]; in_end = in_end[str_rows]
-  cp = cp_add(cp,str_rows,in_start,in_end,"in_str","",ignore.right.ws=TRUE)
-
-  cp$str
-
-  # options ###########################################
-
-  # cp$str now looks e.g. like
-  # {{cmd}} {{varlist}} {{if_str}} {{weight_str}} {{in_str}}, robust   level#~br3~#
-
-  # We now replace bracket placeholders again since option parsing deals on its own with brackets
-  restore.point("cmdpart_of_reg_opts")
-  #options(warn=2)
-  #disable.restore.points(!TRUE)
-  #undebug(replace.placeholders)
-  cp$str = replace.placeholders(cp$str, ph.df)
-  cp$df$content = replace.ph.keep.lines(cp$df$content, ph.df)
-
-
-  start = stri_locate_first_regex(cp$str,",")[,1]+1
-  end = nchar(cp$str)
-  str_rows = which(!is.na(start))
-
-  make_opts = FALSE
-  if (length(str_rows) > 0) {
-    start = start[str_rows]; end = end[str_rows]
-    all_opt_str = substring(cp$str[str_rows],start)
-    res = cmdpart_parse_stata_opt_str(all_opt_str)
-    lens = lapply(res$opt_str,length)
-    make_opts = (any(lens>0))
-  }
-  if (make_opts) {
-    # Replace str
-    opt_ph = sapply(res$opt_str, function(x) paste0("{{opt_str", seq_along(x),"}}", collapse=" "))
-    cp$str[str_rows] = stringi::stri_sub_replace(cp$str[str_rows], from=start, to=end, replacement=opt_ph)
-
-    if (FALSE) {
-      test_li = list(
-        str_row = unlist(mapply(rep,x=str_rows, times=lens,SIMPLIFY = FALSE)),
-        parent = "main",
-        opt_str = unlist(res$opt_str),
-        opt = unlist(res$opt),
-        opt_arg = unlist(res$opt_arg)
-      )
-      sapply(test_li, length)
-    }
-
-    my_unlist = function(x, empty = character(0)) {
-      res = unlist(x)
-      if (is.null(res)) return(empty)
-      res
-    }
-
-    opt_df = tibble(
-        str_row = unlist(mapply(rep,x=str_rows, times=lens,SIMPLIFY = FALSE)),
-        parent = rep("main", length(str_row)),
-        opt_str = my_unlist(res$opt_str),
-        opt = my_unlist(res$opt),
-        opt_arg = my_unlist(res$opt_arg)
-      ) %>%
-      group_by(str_row) %>%
-      mutate(opt_num = seq_len(n())) %>%
-      ungroup()
-
-    n_add = NROW(opt_df)*2 + sum(!is.na(opt_df$opt_arg))
-    if (cp$n + n_add >= NROW(cp$df)) {
-      cp$df = cp_add_empty_df(cp$df, n_add*2)
-    }
-
-    # 4a) add opt_str
-    new.n = (cp$n+NROW(opt_df))
-    inds = (cp$n+1):new.n
-    cp$df$parent[inds] = "main"
-    cp$df$str_row[inds] = opt_df$str_row
-    cp$df$part[inds] = "opt_str"
-    cp$df$counter[inds] = opt_df$opt_num
-    cp$df$content[inds] = opt_df$opt_str
-
-    cp$n = new.n
-
-    # 4b) add opt
-    new.n = (cp$n+NROW(opt_df))
-    inds = (cp$n+1):new.n
-    cp$df$parent[inds] = paste0("opt_str")
-    cp$df$str_row[inds] = opt_df$str_row
-    cp$df$part[inds] = "opt"
-    cp$df$counter[inds] = opt_df$opt_num
-    cp$df$content[inds] = opt_df$opt
-
-    cp$n = new.n
-
-    # 4c) add opt_arg where it exists
-    rows = which(!is.na(opt_df$opt_arg))
-
-    if (length(rows)>0) {
-      new.n = cp$n+length(rows)
-      inds = (cp$n+1):new.n
-      cp$df$parent[inds] = "opt_str"
-      cp$df$str_row[inds] = opt_df$str_row[rows]
-      cp$df$part[inds] = "opt_arg"
-      cp$df$counter[inds] = opt_df$opt_num[rows]
-      cp$df$content[inds] = opt_df$opt_arg[rows]
-
-      cp$n = new.n
-    }
-
-  }
-
-  # adapt tags and df ##########################################
-
-  df = cp$df[seq_len(cp$n),]
-  rows = which(df$tag == "cap_quiet")
-  if (length(rows)>0) {
-    is_capture = has.substr(df$content[rows], "cap")
-    df$tag[rows[is_capture]] = "capture"
-    df$tag[rows[!is_capture]] = "quietly"
-  }
-
-  cont = trimws(df$content)
-  rows = which(df$part == "pre")
-  if (length(rows) > 0) {
-    df$content[rows] = gsub("[ \t]+\\:",":", df$content[rows])
-    irows = rows[trimws(df$content[rows]) == "xi:"]
-    df$tag[irows] = "xi"
-  }
-
-  rows = which(df$part == "cmd" | df$part == "subcmd")
-  df$tag[rows] = df$content[rows]
-
-  df$content[seq_along(cp$str)] = cp$str
-
-
-  restore.point("jslkfslfhksdfh")
-
-  opt_rows = which(df$part == "opt" & df$content %in% c("vce","robust","cluster","r","ro","rob","robu","robus","cl","clu","clus","clust","cluste","cluster",""))
-  df$tag[opt_rows] = "se"
-
-  opt_str_rows = cmdpart_find_parent_rows(df, opt_rows)
-  df$tag[opt_str_rows] = "se"
-
-  opt_arg_rows = cmdpart_find_child_rows(df, opt_str_rows, "opt_arg") %>% na.omit()
-  df$tag[opt_arg_rows] = "se"
-
-
-  opt_rows = which(df$part == "opt" & df$content %in% c("absorb"))
-  df$tag[opt_rows] = "absorb"
-
-  opt_str_rows = cmdpart_find_parent_rows(df, opt_rows)
-  df$tag[opt_str_rows] = "absorb"
-
-  opt_arg_rows = cmdpart_find_child_rows(df, opt_str_rows, "opt_arg") %>% na.omit()
-  df$tag[opt_arg_rows] = "absorb"
-
-
-  df
+  opts
 }
 ```
-!END_MODIFICATION cmdparts_of_stata_reg repboxUtils/R/cmdpart_reg.R
+
+```r
+# FILE: run_opts.R (Update repbox_run_opts)
+repbox_run_opts = function(stop.on.error = TRUE, stata_version = 17, slimify = FALSE, slimify_org=slimify, store_data_caches=TRUE, timeout = 60*5, remove_existing_problems=TRUE, make_script_parcel=TRUE, nested_unzip=TRUE, stata_opts = repbox_stata_opts(timeout = timeout,all.do.timeout = timeout), r_opts = repbox_r_opts(), art_opts = repbox_art_opts(), map_opts=repbox_map_opts(), html_opts = repbox_html_opts(), problem_fail_action= if(stop.on.error) "error" else "msg") {
+  list(
+    stop.on.error = stop.on.error,
+    problem_fail_action = problem_fail_action,
+    stata_version = stata_version,
+    timeout = timeout,
+    store_data_caches = store_data_caches,
+    slimify = slimify,
+    slimify_org = slimify,
+    remove_existing_problems = remove_existing_problems,
+    make_script_parcel = make_script_parcel,
+    nested_unzip = nested_unzip,  # <-- Added
+    stata_opts = stata_opts,
+    r_opts = r_opts,
+    art_opts = art_opts,
+    map_opts = map_opts,
+    html_opts = html_opts
+  )
+}
+```
+
+### 3. Propagate the setting down the call stack
+You need to pass the setting from `rb$opts$nested_unzip` through `rb_extract_zip_to_org()` and down to `robust_unzip()`.
+
+**Step A:** Update `rb_update_file_info_parcel()` in `rb_file_info.R`:
+```r
+# FILE: rb_file_info.R
+rb_update_file_info_parcel = function(rb, overwrite=FALSE, unzip_org=TRUE, assume_org_complete=FALSE, parcels=rb$parcels) {
+  # ... (existing code)
+    if (!is.empty(zip_file)) {
+      rb = rb_load_parcels(rb, "file_info")
+      if (!rb_has_complete_org_dir(rb=rb)) {
+        # Grab the nested_unzip flag from options
+        nested_unzip = if(!is.null(rb$opts$nested_unzip)) rb$opts$nested_unzip else TRUE
+        
+        rb_extract_zip_to_org(project_dir, zip_file, nested_unzip = nested_unzip)
+      }
+    }
+  # ... (existing code)
+}
+```
+
+**Step B:** Update `rb_extract_zip_to_org()` in `rb_sup_zip.R`:
+```r
+# FILE: rb_sup_zip.R
+rb_extract_zip_to_org = function(project_dir, zip_file=rb_get_sup_zip(project_dir), ..., overwrite=TRUE, nested_unzip=TRUE) {
+  restore.point("rb_extract_zip_file")
+  if (is.empty(zip_file)) return()
+  if (!overwrite) {
+    if (rb_has_complete_org_dir(project_dir = project_dir, zip_file = zip_file))
+      return()
+  }
+  repbox_sup_extract_zip(project_dir, sup_zip = zip_file, just_extract_code = FALSE, nested_unzip = nested_unzip)
+}
+```
+
+**Step C:** Update `repbox_sup_extract_zip()` in `init.R`:
+```r
+# FILE: init.R
+repbox_sup_extract_zip = function(project_dir, sup_zip, just_extract_code, remove_macosx_dirs=TRUE, nested_unzip=TRUE) {
+  restore.point("repbox_sup_just_extract_code")
+  # ... (existing setup code)
+  
+  if (!just_extract_code) {
+    robust_unzip(sup_zip, exdir = org.dir, nested_unzip = nested_unzip)
+    if (file.exists(just_extract_code_file)) file.remove(just_extract_code_file)
+    note_problem_if_no_sub_files(project_dir, file_df = file_df)
+    return(TRUE)
+  }
+  
+  # ... (existing code for just_extract_code)
+}
+```
+
+### Discussion & Further Recommendations
+1. **Handling `__MACOSX` directories:** Because MacOS often packs duplicate hidden `.DS_Store` and metadata files into nested zip files, `robust_unzip()` might extract new `__MACOSX` directories. You are already calling `remove_macosx_dirs(org.dir)` directly inside `repbox_init_project()`, which searches recursively, so these will still be successfully cleaned up.
+2. **Deleting nested zip files (`remove_nested_zip`):** I've defaulted `remove_nested_zip = FALSE` in `robust_unzip`. It's usually safer not to aggressively delete the original `.zip` payloads off the disk in case of hashing/provenance checks later. You already have `slimify_org.dir()` that runs later to prune non-essential items, which is much safer.
+3. **Refactoring `unzip.zips()`:** In `file_utils.R`, you have `unzip.zips(dir, remove=TRUE)` which uses R's internal `unzip()`. Now that `robust_unzip` recursively checks `.zip`s, you might consider swapping out `try(unzip(zip.file, ...))` for `try(robust_unzip(zip.file, ...))` inside `unzip.zips()` to fix the internal corrupted zip issue you documented.
