@@ -93,7 +93,7 @@ repbox_store_project_problems = function(project_dir, parcels=list()) {
 
   prob_df$artid = basename(project_dir)
 
-  parcels$problem = list(problem=prob_df)
+  parcels$problem = prob_df
   repdb_save_parcels(parcels["problem"],dir = repdb_dir)
   parcels
 }
