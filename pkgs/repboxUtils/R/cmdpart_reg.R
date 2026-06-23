@@ -7,6 +7,14 @@ example = function() {
     #"capture quietly xi: regress y i.i1##c.d1, vce(hc2)",
     "capt: regress y i.i1##c.d1 if a==5 [aw=z], vce (robust)  opt2(arg2 = fun( funarg )) noarg"
   )
+
+  cmdlines = c(
+    'reg logpgp95 sjb1500 if logpgp95!=. & catho80!=.& muslim80!=. & notmcp80!=. & coal!=. & goldm!=. & iron!=. & silv!=. & zinc!=. & oilres!=. & humid1!=. & temp1!=. & steplow!=. & deslow!=. & stepmid!=. & desmid!=. &  drystep!=. & hiland!=. & drywint!=. & acdummy==1 & wbname!="United States" & wbname!="Canada" & wbname!="Australia" & wbname!="New Zealand" & wbname!="Singapore" & wbname!="Hong Kong, China"  & aa_urb!=., rob',
+    'reg x y',
+    'reg x y if country = "china, japan, germany"'
+  )
+
+
   options(warn=2)
   df = cmdparts_of_stata_reg(cmdlines)
 }
@@ -30,10 +38,21 @@ cmdparts_of_stata_reg = function(cmdlines) {
   # reg y x1 if (i==1) | i==2 | inlist(f1, "A" "B") [aw=x1] in 5/25, robust   level( 95  )
 
   txt = paste0(str, collapse = "\n")
+
+
+  # Deal with , in quotes e.g. in if conditions
+  qpho = try(blocks.to.placeholder(txt, start='"', end='"', ph.prefix = "#~qu"))
+  if (!is(qpho, "try-error"))
+    txt = qpho$str
+
+
   pho = try(blocks.to.placeholder(txt, start=c("("), end=c(")"), ph.prefix = "#~br"))
   if (is(pho,"try-error")) {
     pho = stepwise.blocks.to.placeholder(str)
   }
+
+
+
 
   # Normalize to ensure space before if/in when directly following a closing bracket, quote, or placeholder
   pho$str = stringi::stri_replace_all_regex(pho$str, "(?<=[\\)\\]\"']|~#)if\\s", " if ")
@@ -198,10 +217,7 @@ cmdparts_of_stata_reg = function(cmdlines) {
   # {{cmd}} {{varlist}} {{if_str}} {{weight_str}} {{in_str}}, robust   level#~br3~#
 
   # We now replace bracket placeholders again since option parsing deals on its own with brackets
-  restore.point("cmdpart_of_reg_opts")
-  #options(warn=2)
-  #disable.restore.points(!TRUE)
-  #undebug(replace.placeholders)
+  #restore.point("cmdpart_of_reg_opts")
   cp$str = replace.placeholders(cp$str, ph.df)
   cp$df$content = replace.ph.keep.lines(cp$df$content, ph.df)
 
@@ -319,8 +335,6 @@ cmdparts_of_stata_reg = function(cmdlines) {
   df$content[seq_along(cp$str)] = cp$str
 
 
-  restore.point("jslkfslfhksdfh")
-
   opt_rows = which(df$part == "opt" & df$content %in% c("vce","robust","cluster","r","ro","rob","robu","robus","cl","clu","clus","clust","cluste","cluster",""))
   df$tag[opt_rows] = "se"
 
@@ -340,6 +354,11 @@ cmdparts_of_stata_reg = function(cmdlines) {
   opt_arg_rows = cmdpart_find_child_rows(df, opt_str_rows, "opt_arg") %>% na.omit()
   df$tag[opt_arg_rows] = "absorb"
 
+
+  # substitute quoted strings back
+  restore.point("replace_quotes")
+  if (!is(qpho, "try-error"))
+    df$content = replace.ph.keep.lines(df$content,qpho$ph.df)
 
   df
 }
