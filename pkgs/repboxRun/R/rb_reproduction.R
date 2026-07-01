@@ -124,6 +124,9 @@ rb_run_stata_reproduction_raw = function(
   }
   dir.create(repbox_stata_dir, recursive = TRUE, showWarnings = FALSE)
 
+  # Clear previous timeout problems before the run
+  try(remove_repbox_problems(project_dir, c("stata_reproduction_timeout", "stata_reproduction_global_timeout")), silent = TRUE)
+
   stata_opts$extract.reg.info = isTRUE(capture_reg_info)
   stata_opts$extract.scalar.vals = isTRUE(capture_scalars)
 

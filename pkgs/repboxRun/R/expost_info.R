@@ -56,7 +56,7 @@ repbox_store_project_problems = function(project_dir, parcels=list()) {
   if (NROW(info)>0) {
     num = sum(info$timeout, na.rm = TRUE)
     if (num > 0) {
-      prob_li[[length(prob_li)+1]] = list(type="timeout", msg = paste0(num, " do files had a timeout."))
+      prob_li[[length(prob_li)+1]] = list(type="stata_reproduction_timeout", msg = paste0(num, " do files had a timeout."))
     }
     num = sum(info$num_load_data_err, na.rm=TRUE)
     if (num > 0) {
@@ -103,3 +103,33 @@ repbox_store_step_info = function(project_dir) {
 
 }
 
+
+#' Remove previous repbox problems of specified types
+#'
+#' @param project_dir The project directory
+#' @param types Character vector of problem types to remove
+#' @export
+remove_repbox_problems = function(project_dir, types) {
+  problem_dir = file.path(project_dir, "problems")
+  if (!dir.exists(problem_dir)) return(invisible(FALSE))
+
+  prob_files = list.files(problem_dir, pattern="\\.Rds$", full.names = TRUE)
+  removed = FALSE
+  for (file in prob_files) {
+    prob = try(readRDS(file), silent = TRUE)
+    if (!inherits(prob, "try-error") && is.list(prob)) {
+      ptype = if (!is.null(prob$type)) prob$type else prob$problem_type
+      if (!is.null(ptype) && ptype %in% types) {
+        file.remove(file)
+        removed = TRUE
+      }
+    }
+  }
+
+  # Try to regenerate the aggregated problem parcel if something was removed
+  if (removed) {
+    try(repbox_store_project_problems(project_dir), silent = TRUE)
+  }
+
+  invisible(TRUE)
+}
