@@ -2,7 +2,8 @@ repboxRun::repbox_load_libs()
 
 # Should point to this project dir
 project_dir = rb_get_project_dir("{{project_dir}}")
-mrb = mrb_repair_via_ignore(project_dir = project_dir)
+mrb = mrb_repair_paths_with_r_fail_cmds_via_cache(project_dir, max_cache=5)
+#mrb = mrb_repair_via_ignore(project_dir = project_dir)
 repboxReportDo::rrd_html_do(project_dir)
 
 if (FALSE) {
