@@ -454,7 +454,7 @@ cmdpart_parse_varlist = function(cmd, varlist_str) {
   # Normalize spaces around dashes to keep ranges (e.g., "var1 - var5") as a single token
   varlist_str = gsub("\\s*-\\s*", "-", varlist_str)
 
-  iv_commands = c("ivregress", "ivreg2", "ivreg", "xtivreg2", "xtivreg", "ivreghdfe")
+  iv_commands = c("ivregress", "ivreg2", "ivreg", "xtivreg2", "xtivreg", "ivreghdfe", "reg2hdfespatial")
   is_iv_cmd = cmd %in% iv_commands
   is_reghdfe = cmd == "reghdfe"
 
@@ -470,10 +470,7 @@ cmdpart_parse_varlist = function(cmd, varlist_str) {
 
 #' Parse standard OLS varlists
 cmdpart_parse_default_varlist = function(varlist_str) {
-  # Collapse multiple spaces and tokenize
-  varlist_str = gsub("\\s+", " ", varlist_str)
-  tokens = strsplit(varlist_str, " ")[[1]]
-  tokens = tokens[tokens != ""]
+  tokens = extract_varlist_tokens(varlist_str)
 
   if (length(tokens) == 0) return(NULL)
 
@@ -487,6 +484,40 @@ cmdpart_parse_default_varlist = function(varlist_str) {
     parent = "varlist"
   )
   return(df)
+}
+#' Split a string by spaces, but keep content within parentheses/brackets together.
+extract_varlist_tokens = function(str) {
+  if (is.na(str) || trimws(str) == "") return(character(0))
+
+  chars = strsplit(str, "")[[1]]
+  tokens = character()
+
+  # preallocate
+  token_chars = character(length(chars))
+  token_len = 0
+
+  level = 0
+  for (ch in chars) {
+    if (ch == "(") level = level + 1
+    else if (ch == ")") {
+      if (level > 0) level = level - 1
+    }
+
+    if (level == 0 && (ch == " " || ch == "\t" || ch == "\n" || ch == "\r")) {
+      if (token_len > 0) {
+        tokens = c(tokens, paste(token_chars[1:token_len], collapse = ""))
+        token_len = 0
+      }
+    } else {
+      token_len = token_len + 1
+      token_chars[token_len] = ch
+    }
+  }
+  if (token_len > 0) {
+    tokens = c(tokens, paste(token_chars[1:token_len], collapse = ""))
+  }
+
+  tokens
 }
 
 #' Parse IV varlists including subcommands and parenthesis blocks
@@ -502,11 +533,35 @@ cmdpart_parse_iv_varlist = function(cmd, varlist_str) {
     varlist_str = trimws(varlist_str)
   }
 
-  # Locate the (endo = instr) block
-  br_start = regexpr("\\(", varlist_str)
-  br_end = regexpr("\\)", varlist_str)
+  # Locate the (endo = instr) block safely
+  brace_pos = locate_1st_level_braces(varlist_str, open="(", close=")")
 
-  if (br_start > 0 && br_end > br_start) {
+  iv_block_idx = NA
+  if (!is.null(brace_pos) && nrow(brace_pos) > 0) {
+    for (i in seq_len(nrow(brace_pos))) {
+      block_str = substr(varlist_str, brace_pos[i, 1] + 1, brace_pos[i, 2] - 1)
+
+      # Mask inner braces to find top-level '='
+      inner_braces = locate_1st_level_braces(block_str, open="(", close=")")
+      safe_block = block_str
+      if (!is.null(inner_braces) && nrow(inner_braces) > 0) {
+        for (j in seq_len(nrow(inner_braces))) {
+          len = inner_braces[j, 2] - inner_braces[j, 1] + 1
+          substring(safe_block, inner_braces[j, 1], inner_braces[j, 2]) <- strrep(" ", len)
+        }
+      }
+
+      if (grepl("=", safe_block)) {
+        iv_block_idx = i
+        break
+      }
+    }
+  }
+
+  if (!is.na(iv_block_idx)) {
+    br_start = brace_pos[iv_block_idx, 1]
+    br_end = brace_pos[iv_block_idx, 2]
+
     iv_block = substr(varlist_str, br_start + 1, br_end - 1)
 
     # Everything outside the parentheses are either the depvar or exogenous variables
@@ -515,28 +570,33 @@ cmdpart_parse_iv_varlist = function(cmd, varlist_str) {
     outside_str = trimws(paste(outside_before, outside_after))
 
     # Parse IV block
-    eq_pos = regexpr("=", iv_block)
+    # Find '=' at the top level of iv_block
+    inner_braces = locate_1st_level_braces(iv_block, open="(", close=")")
+    safe_block = iv_block
+    if (!is.null(inner_braces) && nrow(inner_braces) > 0) {
+      for (j in seq_len(nrow(inner_braces))) {
+        len = inner_braces[j, 2] - inner_braces[j, 1] + 1
+        substring(safe_block, inner_braces[j, 1], inner_braces[j, 2]) <- strrep(" ", len)
+      }
+    }
+    eq_pos = regexpr("=", safe_block)
+
     if (eq_pos > 0) {
       endo_str = trimws(substr(iv_block, 1, eq_pos - 1))
       instr_str = trimws(substr(iv_block, eq_pos + 1, nchar(iv_block)))
 
-      endo = strsplit(gsub("\\s+", " ", endo_str), " ")[[1]]
-      instr = strsplit(gsub("\\s+", " ", instr_str), " ")[[1]]
-
-      endo = endo[endo != ""]
-      instr = instr[instr != ""]
+      endo = extract_varlist_tokens(endo_str)
+      instr = extract_varlist_tokens(instr_str)
     } else {
       # Fallback if '=' is missing inside parenthesis
       endo = character(0)
-      instr = strsplit(gsub("\\s+", " ", iv_block), " ")[[1]]
-      instr = instr[instr != ""]
+      instr = extract_varlist_tokens(iv_block)
     }
 
     # Parse Outside block
-    outside_tokens = strsplit(gsub("\\s+", " ", outside_str), " ")[[1]]
-    outside_tokens = outside_tokens[outside_tokens != ""]
+    outside_tokens = extract_varlist_tokens(outside_str)
 
-    depvar = outside_tokens[1]
+    depvar = if (length(outside_tokens) > 0) outside_tokens[1] else character(0)
     exo = if (length(outside_tokens) > 1) outside_tokens[2:length(outside_tokens)] else character(0)
 
   } else {
@@ -547,16 +607,17 @@ cmdpart_parse_iv_varlist = function(cmd, varlist_str) {
   # Construct token dataframe
   df = tibble::tibble(
     part = c(if (!is.null(subcmd)) "subcmd" else character(0),
-             rep("v", 1 + length(exo) + length(endo) + length(instr))),
+             if (length(depvar) > 0) "v" else character(0),
+             rep("v", length(exo) + length(endo) + length(instr))),
     tag = c(if (!is.null(subcmd)) "" else character(0),
-            "depvar",
+            if (length(depvar) > 0) "depvar" else character(0),
             rep("exo", length(exo)),
             rep("endo", length(endo)),
             rep("instr", length(instr))),
     content = c(if (!is.null(subcmd)) subcmd else character(0),
                 depvar, exo, endo, instr),
     parent = c(if (!is.null(subcmd)) "varlist" else character(0),
-               rep("varlist", 1 + length(exo) + length(endo) + length(instr)))
+               rep("varlist", length(depvar) + length(exo) + length(endo) + length(instr)))
   )
 
   return(df)
