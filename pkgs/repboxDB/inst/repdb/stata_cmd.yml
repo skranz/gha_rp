@@ -38,6 +38,11 @@ fields:
   cmdline:
     descr: The full command line
 
+  cmd2:
+    descr: |
+      For commands like "program define" the 2nd part of the command
+      here "define".
+
   prefix_cmd1:
     descr: |
       (Optional) A prefix command before a colon like capture:

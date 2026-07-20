@@ -1,0 +1,19 @@
+name: stata_cmd
+
+descr: |
+  Table of stata_run_cmd that were run within a user defined
+  Stata program.
+  Current use:
+  If a preserve command is called inside the function
+  we would like to add a restore at the end of the function.
+
+unique_index:
+  main_index: [runid]
+
+fields:
+  runid:
+    type: int
+
+  progid:
+
+  progrunid:
