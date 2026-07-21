@@ -67,7 +67,6 @@ exlogistic
 expoisson
 arch
 frontier
-reg3
 heckman
 etregress
 etpoisson

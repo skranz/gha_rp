@@ -13,7 +13,10 @@ stata_cmds_postreg = function() {
 }
 
 stata_cmds_quasireg = function() {
-  c("rd", "rdrobust","psmatch2","leebounds", "a2reg","xtabond2","altrdrobust","hausman","stcox", "xtivreg","ivreghdfe","condivreg","xtpoisson","newey2","hetprob","reg2hdfespatial")
+  c("rd", "rdrobust","psmatch2","leebounds", "a2reg","xtabond2","altrdrobust","hausman","stcox", "xtivreg","ivreghdfe","condivreg","xtpoisson","newey2","hetprob","reg2hdfespatial",
+
+  "reg3" # cannot parse syntax -> treat as quasireg
+  )
 }
 
 stata_cmds_reg = function() {
