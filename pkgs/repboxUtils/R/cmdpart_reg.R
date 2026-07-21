@@ -454,7 +454,25 @@ cmdpart_parse_varlist = function(cmd, varlist_str) {
   # Normalize spaces around dashes to keep ranges (e.g., "var1 - var5") as a single token
   varlist_str = gsub("\\s*-\\s*", "-", varlist_str)
 
-  iv_commands = c("ivregress", "ivreg2", "ivreg", "xtivreg2", "xtivreg", "ivreghdfe", "reg2hdfespatial")
+  iv_commands = c(
+  "ivregress",
+  "ivreg2",
+  "ivreg",
+  "xtivreg2",
+  "xtivreg",
+  "ivreghdfe",
+  "reg2hdfespatial",
+  "condivreg",
+  "givregress",
+  "ivprobit",
+  "ivtobit",
+  "ivpoisson",
+  "ivfprobit",
+  "ivqregress",
+  "spivregress"
+  )
+
+  #iv_commands = c("ivregress", "ivreg2", "ivreg", "xtivreg2", "xtivreg", "ivreghdfe", "reg2hdfespatial", "condivreg")
   is_iv_cmd = cmd %in% iv_commands
   is_reghdfe = cmd == "reghdfe"
 

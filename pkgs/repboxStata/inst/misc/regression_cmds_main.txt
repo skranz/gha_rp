@@ -22,7 +22,6 @@ bsqreg
 sqreg
 iqreg
 vwls
-gsem
 anova
 oneway
 loneway
