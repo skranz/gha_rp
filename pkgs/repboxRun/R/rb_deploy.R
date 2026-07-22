@@ -145,7 +145,7 @@ source_with_log = function(script_file, log_file,
   log_con = file(log_file, open = if (append) "at" else "wt")
   output_sink_start = sink.number(type = "output")
   old_warn = getOption("warn")
-  options(warn = 1)
+  #options(warn = 1)
 
   timestamp = function() format(Sys.time(), "%Y-%m-%d %H:%M:%S")
 

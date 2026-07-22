@@ -5,7 +5,7 @@ project_dir = rb_get_project_dir("{{project_dir}}")
 overwrite = {{overwrite}}
 
 if (FALSE) {
-  options(warn=1)
+  #options(warn=1)
   opts=mrb_test_opts(data_head_rows = 10, show_org_data=FALSE, show_pre_reg_data = FALSE, data_width=100, max_cases = 10, data_add_org_row=TRUE)
   metaregBase::mrb_run_as_test(project_dir = project_dir,file.path(project_dir, "run/run_mrb_test.R"), opts=opts)
   rstudioapi::navigateToFile(file.path(project_dir, "test_report/test_report.Rmd"))
@@ -38,7 +38,7 @@ drf_clear_mcache()
 mrb_clean_for_rerun(project_dir)
 mrb = mrb_init(project_dir,with_try = TRUE)
 if (TRUE) {
-  options(warn=2)
+  #options(warn=2)
   mrb = mrb_full_stata_script(mrb)
   mrb = mrb_run_stata_script(mrb)
   mrb$drf = repboxDRF:::drf_apply_caches(mrb$drf)

@@ -22,7 +22,6 @@ example = function() {
   #opts = repbox_run_opts(stop.on.error = FALSE,html_opts=html_opts)
   #steps = repbox_steps_from(map = TRUE,html=FALSE)
   #steps = repbox_steps_from(file_info = TRUE,art = TRUE,reproduction = FALSE)
-  options(warn=1)
   opts = repbox_run_opts(stop.on.error = !TRUE,timeout = 10*60, art_opts = repbox_art_opts(overwrite=TRUE), html_opts = html_opts)
   repbox_run_project(Project_dir,lang="stata", steps=steps, opts=opts)
   rstudioapi::filesPaneNavigate(Project_dir)
@@ -37,7 +36,7 @@ example = function() {
 
   library(repboxRun)
   project_dir = "/home/rstudio/repbox/projects_test/testsupp"
-  options(warn=1)
+  #options(warn=1)
   restore.point.options(display.restore.point = !TRUE)
   html_opts = repboxHtml::repbox_html_opts_just_ejd()
   opts = repbox_run_opts(stop.on.error = FALSE, timeout = 10, html_opts = html_opts)
